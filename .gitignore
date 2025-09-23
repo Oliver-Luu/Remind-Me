@@ -60,3 +60,11 @@ fastlane/report.xml
 fastlane/Preview.html
 fastlane/screenshots/**/*.png
 fastlane/test_output
+Remind Me.xcodeproj/project.pbxproj
+Remind Me.xcodeproj/project.xcworkspace/contents.xcworkspacedata
+Remind Me/.DS_Store
+Remind Me/Assets.xcassets/.DS_Store
+Remind Me/Assets.xcassets/AccentColor.colorset/Contents.json
+Remind Me/Assets.xcassets/AppIcon.appiconset/Contents.json
+Remind Me/Assets.xcassets/Contents.json
+.DS_Store
