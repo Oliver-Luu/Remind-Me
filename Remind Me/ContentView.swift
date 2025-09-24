@@ -13,6 +13,7 @@ struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
     @Query private var items: [Item]
     @State private var currentTime = Date()
+    @State private var isTicking = true
         
     // Timer that fires every second
     private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
@@ -20,19 +21,43 @@ struct ContentView: View {
     var body: some View {
         VStack(spacing: 12) {
             Text("Remind Me")
-                .font(.largeTitle)
+                .font(.system(size: 56, weight: .bold, design: .monospaced))
                 .padding(.top, 46)
 
             Text(formattedTime)
                 .font(.system(size: 48, weight: .bold, design: .monospaced))
                 .padding(.top, 4)
+            
+            Spacer()
+
+            VStack(spacing: 16) {
+                Button("My Reminders") {
+                    // TODO: Show reminders list
+                    // Placeholder action for now
+                    print("My Reminders tapped")
+                }
+                .buttonStyle(.bordered)
+                .frame(minWidth: 240)
+
+                Button("Add Reminder") {
+                    addItem()
+                }
+                .buttonStyle(.borderedProminent)
+                .frame(minWidth: 240)
+                
+            }
+            .font(.title2)
+            .controlSize(.large)
+            .frame(maxWidth: .infinity)
 
             Spacer()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         // Update the state every time the timer fires
         .onReceive(timer) { input in
-            currentTime = input
+            if isTicking {
+                currentTime = input
+            }
         }
     }
 
