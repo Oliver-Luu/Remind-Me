@@ -19,44 +19,44 @@ struct ContentView: View {
     private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     var body: some View {
-        VStack(spacing: 12) {
-            Text("Remind Me")
-                .font(.system(size: 56, weight: .bold, design: .monospaced))
-                .padding(.top, 46)
+        NavigationStack {
+            VStack(spacing: 12) {
+                Text("Remind Me")
+                    .font(.system(size: 56, weight: .bold, design: .monospaced))
+                    .padding(.top, 46)
 
-            Text(formattedTime)
-                .font(.system(size: 48, weight: .bold, design: .monospaced))
-                .padding(.top, 4)
-            
-            Spacer()
-
-            VStack(spacing: 16) {
-                Button("My Reminders") {
-                    // TODO: Show reminders list
-                    // Placeholder action for now
-                    print("My Reminders tapped")
-                }
-                .buttonStyle(.bordered)
-                .frame(minWidth: 240)
-
-                Button("Add Reminder") {
-                    addItem()
-                }
-                .buttonStyle(.borderedProminent)
-                .frame(minWidth: 240)
+                Text(formattedTime)
+                    .font(.system(size: 48, weight: .bold, design: .monospaced))
+                    .padding(.top, 4)
                 
-            }
-            .font(.title2)
-            .controlSize(.large)
-            .frame(maxWidth: .infinity)
+                Spacer()
 
-            Spacer()
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        // Update the state every time the timer fires
-        .onReceive(timer) { input in
-            if isTicking {
-                currentTime = input
+                VStack(spacing: 16) {
+                    NavigationLink("My Reminders") {
+                        RemindersListView()
+                    }
+                    .buttonStyle(.bordered)
+                    .frame(minWidth: 240)
+
+                    NavigationLink("Add Reminder") {
+                        AddReminderView()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .frame(minWidth: 240)
+                    
+                }
+                .font(.title2)
+                .controlSize(.large)
+                .frame(maxWidth: .infinity)
+
+                Spacer()
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            // Update the state every time the timer fires
+            .onReceive(timer) { input in
+                if isTicking {
+                    currentTime = input
+                }
             }
         }
     }
