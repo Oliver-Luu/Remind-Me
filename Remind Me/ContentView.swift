@@ -14,6 +14,7 @@ struct ContentView: View {
     @Query private var items: [Item]
     @State private var currentTime = Date()
     @State private var isTicking = true
+    @State private var isPresentingAddReminder = false
         
     // Timer that fires every second
     private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
@@ -24,9 +25,11 @@ struct ContentView: View {
                 Text("Remind Me")
                     .font(.system(size: 56, weight: .bold, design: .monospaced))
                     .padding(.top, 46)
-
                 Text(formattedTime)
-                    .font(.system(size: 48, weight: .bold, design: .monospaced))
+                    .font(.system(size: 40, weight: .bold, design: .monospaced))
+                    .padding(.top, 4)
+                Text(formattedDate)
+                    .font(.system(size: 25, weight: .bold, design: .monospaced))
                     .padding(.top, 4)
                 
                 Spacer()
@@ -38,8 +41,8 @@ struct ContentView: View {
                     .buttonStyle(.bordered)
                     .frame(minWidth: 240)
 
-                    NavigationLink("Add Reminder") {
-                        AddReminderView()
+                    Button("Add Reminder") {
+                        isPresentingAddReminder = true
                     }
                     .buttonStyle(.borderedProminent)
                     .frame(minWidth: 240)
@@ -58,6 +61,13 @@ struct ContentView: View {
                     currentTime = input
                 }
             }
+            .sheet(isPresented: $isPresentingAddReminder) {
+                NavigationStack {
+                    AddReminderView()
+                        .presentationDetents([.fraction(0.65)]) // medium = half screen, large = full
+                    .presentationDragIndicator(.visible)    // show the little grab bar
+                }
+            }
         }
     }
 
@@ -65,6 +75,13 @@ struct ContentView: View {
     private var formattedTime: String {
         let formatter = DateFormatter()
         formatter.dateFormat = "HH:mm:ss" // 24-hour format
+        return formatter.string(from: currentTime)
+    }
+
+    // Computed property to format date
+    private var formattedDate: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMMM dd" // e.g., September 24
         return formatter.string(from: currentTime)
     }
 

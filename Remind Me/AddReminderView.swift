@@ -9,17 +9,21 @@ struct AddReminderView: View {
 
     var body: some View {
         Form {
-            Section("Reminder Time") {
+            Section() {
                 DatePicker("Select Date and Time", selection: $date, displayedComponents: [.date, .hourAndMinute])
             }
         }
         .navigationTitle("Add Reminder")
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
-                Button("Cancel") { dismiss() }
+                Button("Cancel") {
+                    dismiss()
+                }
             }
             ToolbarItem(placement: .confirmationAction) {
-                Button("Save") { save() }
+                Button("Save") {
+                    save()
+                }
             }
         }
     }
