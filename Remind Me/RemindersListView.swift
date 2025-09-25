@@ -3,23 +3,63 @@ import SwiftData
 
 struct RemindersListView: View {
     @Environment(\.modelContext) private var modelContext
-    @Query(sort: [SortDescriptor(\Item.timestamp, order: .reverse)]) private var items: [Item]
+    @Query(sort: [SortDescriptor(\Item.timestamp, order: .forward)]) private var items: [Item]
+    @State private var isPresentingAddReminder = false
 
     var body: some View {
         List {
             ForEach(items) { item in
                 HStack(spacing: 12) {
-                    Image(systemName: "bell")
-                        .foregroundStyle(.tint)
+                    Image(systemName: item.isCompleted ? "checkmark.circle.fill" : "bell")
+                        .foregroundStyle(item.isCompleted ? .green : .blue)
+                        .onTapGesture {
+                            toggleCompletion(for: item)
+                        }
+                    
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(formatted(date: item.timestamp))
-                            .font(.headline)
-                        Text(item.timestamp, style: .relative)
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
+                        HStack {
+                            Text(item.title)
+                                .font(.headline)
+                                .strikethrough(item.isCompleted)
+                            
+                            Spacer()
+                            
+                            if item.repeatFrequency != .none {
+                                Image(systemName: "repeat")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        
+                        HStack {
+                            Text(formatted(date: item.timestamp))
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                            
+                            if item.repeatFrequency != .none {
+                                Text("• \(item.repeatFrequency.displayName)")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
                     }
                 }
                 .padding(.vertical, 4)
+                .contextMenu {
+                    if item.repeatFrequency != .none {
+                        Button("Add Next Occurrence") {
+                            addNextOccurrence(for: item, modelContext: modelContext)
+                        }
+                        
+                        Button("Remove Future Occurrences", role: .destructive) {
+                            removeAllFutureOccurrences(for: item, modelContext: modelContext)
+                        }
+                    }
+                    
+                    Button("Delete", role: .destructive) {
+                        modelContext.delete(item)
+                    }
+                }
             }
             .onDelete(perform: delete)
         }
@@ -27,10 +67,17 @@ struct RemindersListView: View {
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button {
-                    addQuick()
+                    isPresentingAddReminder = true
                 } label: {
                     Label("Add", systemImage: "plus")
                 }
+            }
+        }
+        .sheet(isPresented: $isPresentingAddReminder) {
+            NavigationStack {
+                AddReminderView()
+                    .presentationDetents([.fraction(0.8)])
+                    .presentationDragIndicator(.visible)
             }
         }
     }
@@ -42,10 +89,9 @@ struct RemindersListView: View {
         return df.string(from: date)
     }
 
-    private func addQuick() {
+    private func toggleCompletion(for item: Item) {
         withAnimation {
-            let newItem = Item(timestamp: Date())
-            modelContext.insert(newItem)
+            item.isCompleted.toggle()
         }
     }
 

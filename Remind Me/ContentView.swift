@@ -64,7 +64,7 @@ struct ContentView: View {
             .sheet(isPresented: $isPresentingAddReminder) {
                 NavigationStack {
                     AddReminderView()
-                        .presentationDetents([.fraction(0.65)]) // medium = half screen, large = full
+                        .presentationDetents([.large])
                     .presentationDragIndicator(.visible)    // show the little grab bar
                 }
             }
@@ -83,13 +83,6 @@ struct ContentView: View {
         let formatter = DateFormatter()
         formatter.dateFormat = "MMMM dd" // e.g., September 24
         return formatter.string(from: currentTime)
-    }
-
-    private func addItem() {
-        withAnimation {
-            let newItem = Item(timestamp: Date())
-            modelContext.insert(newItem)
-        }
     }
 
     private func deleteItems(offsets: IndexSet) {
