@@ -87,6 +87,12 @@ class NotificationManager: ObservableObject {
     }
     
     private func schedulePersistentNotifications(for item: Item) async {
+        // Don't schedule persistent notifications for completed items
+        guard !item.isCompleted else {
+            print("Skipping persistent notifications for completed reminder: \(item.title)")
+            return
+        }
+        
         // Add to active persistent reminders
         activePeristentReminders.insert(item.id)
         
@@ -171,21 +177,8 @@ class NotificationManager: ObservableObject {
     }
     
     /// Cancel a scheduled notification and all its persistent follow-ups
-    func cancelNotification(for item: Item) {
-        // Cancel the main notification
-        let identifier = "reminder_\(item.id)"
-        var identifiersToCancel = [identifier]
-        
-        // Cancel all persistent follow-up notifications
-        for i in 1...maxPersistentNotifications {
-            identifiersToCancel.append("reminder_\(item.id)_followup_\(i)")
-        }
-        
-        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: identifiersToCancel)
-        
-        // Remove from active persistent reminders
-        activePeristentReminders.remove(item.id)
-        
+    func cancelNotification(for item: Item) async {
+        await cancelAllNotificationsForReminder(reminderID: item.id)
         print("Cancelled all notifications for: \(item.title)")
     }
     
@@ -206,6 +199,30 @@ class NotificationManager: ObservableObject {
         print("Cancelled persistent notifications for reminder: \(reminderID)")
     }
     
+    /// Cancel all notifications (main + persistent) for a specific reminder
+    private func cancelAllNotificationsForReminder(reminderID: String) async {
+        var identifiersToCancel: [String] = []
+        
+        // Add main notification identifier
+        identifiersToCancel.append("reminder_\(reminderID)")
+        
+        // Add all persistent follow-up identifiers
+        for i in 1...maxPersistentNotifications {
+            identifiersToCancel.append("reminder_\(reminderID)_followup_\(i)")
+        }
+        
+        // Cancel all pending notifications
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: identifiersToCancel)
+        
+        // Also remove any delivered notifications that might still be in the notification center
+        UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: identifiersToCancel)
+        
+        // Remove from active persistent reminders
+        activePeristentReminders.remove(reminderID)
+        
+        print("Cancelled all notifications (pending and delivered) for reminder: \(reminderID)")
+    }
+    
     /// Schedule notifications for multiple reminders
     func scheduleNotifications(for items: [Item]) async {
         for item in items {
@@ -214,23 +231,10 @@ class NotificationManager: ObservableObject {
     }
     
     /// Cancel notifications for multiple reminders
-    func cancelNotifications(for items: [Item]) {
-        var allIdentifiers: [String] = []
-        
+    func cancelNotifications(for items: [Item]) async {
         for item in items {
-            // Add main notification identifier
-            allIdentifiers.append("reminder_\(item.id)")
-            
-            // Add persistent follow-up identifiers
-            for i in 1...maxPersistentNotifications {
-                allIdentifiers.append("reminder_\(item.id)_followup_\(i)")
-            }
-            
-            // Remove from active persistent reminders
-            activePeristentReminders.remove(item.id)
+            await cancelAllNotificationsForReminder(reminderID: item.id)
         }
-        
-        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: allIdentifiers)
     }
     
     /// Handle notification actions
@@ -244,12 +248,12 @@ class NotificationManager: ObservableObject {
         
         switch actionIdentifier {
         case "COMPLETE_ACTION":
-            // Stop persistent notifications when completing
-            cancelPersistentNotifications(for: reminderID)
+            // First cancel all notifications for this reminder
+            await cancelAllNotificationsForReminder(reminderID: reminderID)
             await markReminderComplete(reminderID: reminderID, modelContext: modelContext)
         case "SNOOZE_ACTION":
-            // Stop current persistent notifications and schedule new ones for snoozed reminder
-            cancelPersistentNotifications(for: reminderID)
+            // Cancel all notifications for this reminder before snoozing
+            await cancelAllNotificationsForReminder(reminderID: reminderID)
             await snoozeReminder(reminderID: reminderID, modelContext: modelContext)
         case "STOP_PERSISTENT_ACTION":
             // Stop persistent notifications without completing the reminder
@@ -271,7 +275,11 @@ class NotificationManager: ObservableObject {
             if let item = items.first(where: { $0.id == reminderID }) {
                 item.isCompleted = true
                 try modelContext.save()
-                print("Marked reminder complete: \(item.title)")
+                
+                // Make sure to cancel any remaining notifications for this item
+                await cancelAllNotificationsForReminder(reminderID: reminderID)
+                
+                print("Marked reminder complete and cancelled all notifications: \(item.title)")
             }
         } catch {
             print("Error marking reminder complete: \(error)")
@@ -326,5 +334,15 @@ class NotificationManager: ObservableObject {
         activePeristentReminders.removeAll()
         
         print("Stopped all persistent notifications")
+    }
+    
+    /// Call this method when a reminder is marked as completed from the UI
+    func handleReminderCompleted(_ item: Item) async {
+        await cancelAllNotificationsForReminder(reminderID: item.id)
+    }
+    
+    /// Call this method when a reminder is deleted from the UI
+    func handleReminderDeleted(_ item: Item) async {
+        await cancelAllNotificationsForReminder(reminderID: item.id)
     }
 }

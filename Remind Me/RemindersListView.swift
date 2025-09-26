@@ -52,12 +52,16 @@ struct RemindersListView: View {
                         }
                         
                         Button("Remove Future Occurrences", role: .destructive) {
-                            removeAllFutureOccurrences(for: item, modelContext: modelContext)
+                            Task {
+                                await removeAllFutureOccurrences(for: item, modelContext: modelContext)
+                            }
                         }
                     }
                     
                     Button("Delete", role: .destructive) {
-                        NotificationManager.shared.cancelNotification(for: item)
+                        Task {
+                            await NotificationManager.shared.handleReminderDeleted(item)
+                        }
                         modelContext.delete(item)
                     }
                 }
@@ -93,14 +97,24 @@ struct RemindersListView: View {
     private func toggleCompletion(for item: Item) {
         withAnimation {
             item.isCompleted.toggle()
+            
+            // Cancel notifications when marking as complete
+            if item.isCompleted {
+                Task {
+                    await NotificationManager.shared.handleReminderCompleted(item)
+                }
+            }
         }
     }
 
     private func delete(at offsets: IndexSet) {
         withAnimation {
             let itemsToDelete = offsets.map { items[$0] }
+            
             // Cancel notifications for deleted reminders
-            NotificationManager.shared.cancelNotifications(for: itemsToDelete)
+            Task {
+                await NotificationManager.shared.cancelNotifications(for: itemsToDelete)
+            }
             
             for index in offsets {
                 modelContext.delete(items[index])

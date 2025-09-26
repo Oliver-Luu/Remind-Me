@@ -99,7 +99,7 @@ func addNextOccurrence(for item: Item, modelContext: ModelContext) {
 }
 
 /// Removes all future occurrences of a repeating reminder series
-func removeAllFutureOccurrences(for item: Item, modelContext: ModelContext) {
+func removeAllFutureOccurrences(for item: Item, modelContext: ModelContext) async {
     guard let parentID = item.parentReminderID else { return }
     
     // Find all reminders in the same series that occur after the current one
@@ -114,7 +114,7 @@ func removeAllFutureOccurrences(for item: Item, modelContext: ModelContext) {
         }
         
         // Cancel notifications for future reminders
-        NotificationManager.shared.cancelNotifications(for: futureReminders)
+        await NotificationManager.shared.cancelNotifications(for: futureReminders)
         
         for reminder in futureReminders {
             modelContext.delete(reminder)

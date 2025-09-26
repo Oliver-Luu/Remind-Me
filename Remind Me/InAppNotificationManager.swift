@@ -85,6 +85,11 @@ class InAppNotificationManager: ObservableObject {
             item.isCompleted = true
             removeFromActiveNotifications(item)
             
+            // Cancel all notifications for this reminder
+            Task {
+                await NotificationManager.shared.handleReminderCompleted(item)
+            }
+            
             // Create next occurrence if it's repeating
             if item.repeatFrequency != .none {
                 addNextOccurrence(for: item, modelContext: modelContext)
@@ -102,6 +107,11 @@ class InAppNotificationManager: ObservableObject {
         guard let modelContext = modelContext else { return }
         
         withAnimation {
+            // Cancel notifications for the original reminder
+            Task {
+                await NotificationManager.shared.handleReminderCompleted(item)
+            }
+            
             let snoozeDate = Date().addingTimeInterval(TimeInterval(minutes * 60))
             let snoozeReminder = Item(
                 timestamp: snoozeDate,
