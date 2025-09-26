@@ -18,6 +18,7 @@ func addRepeatingReminders(
 ) {
     // Create a unique ID for this set of repeating reminders
     let parentID = UUID().uuidString
+    var remindersToSchedule: [Item] = []
     
     // Always create the initial reminder
     let initialReminder = Item(
@@ -27,9 +28,15 @@ func addRepeatingReminders(
         parentReminderID: repeatFrequency == .none ? nil : parentID
     )
     modelContext.insert(initialReminder)
+    remindersToSchedule.append(initialReminder)
     
     // If it's not repeating, we're done
-    guard repeatFrequency != .none else { return }
+    guard repeatFrequency != .none else { 
+        Task {
+            await NotificationManager.shared.scheduleNotifications(for: remindersToSchedule)
+        }
+        return 
+    }
     
     // Create additional reminders based on the repeat frequency
     let calendar = Calendar.current
@@ -45,6 +52,12 @@ func addRepeatingReminders(
             parentReminderID: parentID
         )
         modelContext.insert(reminder)
+        remindersToSchedule.append(reminder)
+    }
+    
+    // Schedule notifications for all reminders
+    Task {
+        await NotificationManager.shared.scheduleNotifications(for: remindersToSchedule)
     }
 }
 
@@ -78,6 +91,11 @@ func addNextOccurrence(for item: Item, modelContext: ModelContext) {
         parentReminderID: item.parentReminderID
     )
     modelContext.insert(nextReminder)
+    
+    // Schedule notification for the new reminder
+    Task {
+        await NotificationManager.shared.scheduleNotification(for: nextReminder)
+    }
 }
 
 /// Removes all future occurrences of a repeating reminder series
@@ -94,6 +112,9 @@ func removeAllFutureOccurrences(for item: Item, modelContext: ModelContext) {
         let futureReminders = allItems.filter { reminder in
             reminder.parentReminderID == parentID && reminder.timestamp > item.timestamp
         }
+        
+        // Cancel notifications for future reminders
+        NotificationManager.shared.cancelNotifications(for: futureReminders)
         
         for reminder in futureReminders {
             modelContext.delete(reminder)

@@ -11,10 +11,13 @@ import Combine
 
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
+    @EnvironmentObject private var notificationManager: NotificationManager
+    @EnvironmentObject private var inAppNotificationManager: InAppNotificationManager
     @Query private var items: [Item]
     @State private var currentTime = Date()
     @State private var isTicking = true
     @State private var isPresentingAddReminder = false
+    @State private var showingNotificationAlert = false
         
     // Timer that fires every second
     private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
@@ -32,6 +35,18 @@ struct ContentView: View {
                     .font(.system(size: 25, weight: .bold, design: .monospaced))
                     .padding(.top, 4)
                 
+                // Notification status indicator
+                if notificationManager.authorizationStatus == .denied {
+                    VStack(spacing: 4) {
+                        Image(systemName: "bell.slash")
+                            .foregroundColor(.orange)
+                        Text("Notifications Disabled")
+                            .font(.caption)
+                            .foregroundColor(.orange)
+                    }
+                    .padding(.top, 8)
+                }
+                
                 Spacer()
 
                 VStack(spacing: 16) {
@@ -42,7 +57,11 @@ struct ContentView: View {
                     .frame(minWidth: 240)
 
                     Button("Add Reminder") {
-                        isPresentingAddReminder = true
+                        if notificationManager.authorizationStatus == .denied {
+                            showingNotificationAlert = true
+                        } else {
+                            isPresentingAddReminder = true
+                        }
                     }
                     .buttonStyle(.borderedProminent)
                     .frame(minWidth: 240)
@@ -67,6 +86,19 @@ struct ContentView: View {
                         .presentationDetents([.large])
                     .presentationDragIndicator(.visible)    // show the little grab bar
                 }
+            }
+            .alert("Enable Notifications", isPresented: $showingNotificationAlert) {
+                Button("Settings") {
+                    if let settingsUrl = URL(string: UIApplication.openSettingsURLString) {
+                        UIApplication.shared.open(settingsUrl)
+                    }
+                }
+                Button("Cancel", role: .cancel) { }
+                Button("Continue Without Notifications") {
+                    isPresentingAddReminder = true
+                }
+            } message: {
+                Text("To receive reminder notifications, please enable notifications in Settings. You can still create reminders without notifications.")
             }
         }
     }
@@ -96,5 +128,7 @@ struct ContentView: View {
 
 #Preview {
     ContentView()
+        .environmentObject(NotificationManager.shared)
+        .environmentObject(InAppNotificationManager())
         .modelContainer(for: Item.self, inMemory: true)
 }

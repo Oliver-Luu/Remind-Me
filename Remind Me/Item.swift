@@ -27,6 +27,7 @@ final class Item {
     var repeatFrequency: RepeatFrequency
     var isCompleted: Bool
     var parentReminderID: String? // For tracking related repeating reminders
+    var id: String // Unique identifier for notifications
     
     init(timestamp: Date, title: String = "Reminder", repeatFrequency: RepeatFrequency = .none, parentReminderID: String? = nil) {
         self.timestamp = timestamp
@@ -34,5 +35,6 @@ final class Item {
         self.repeatFrequency = repeatFrequency
         self.isCompleted = false
         self.parentReminderID = parentReminderID
+        self.id = UUID().uuidString
     }
 }
