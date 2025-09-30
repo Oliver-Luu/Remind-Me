@@ -60,7 +60,7 @@ struct Remind_MeApp: App {
     }
     
     private func requestNotificationPermission() async {
-        await notificationManager.requestNotificationPermission()
+        _ = await notificationManager.requestNotificationPermission()
     }
 }
 

@@ -25,7 +25,7 @@ struct ContentView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 12) {
-                Text("Remind Me")
+                Text("iRemindMe")
                     .font(.system(size: 56, weight: .bold, design: .monospaced))
                     .padding(.top, 46)
                 Text(formattedTime)
