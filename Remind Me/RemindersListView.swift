@@ -9,80 +9,100 @@ struct RemindersListView: View {
     @State private var isPresentingEditReminder = false
 
     var body: some View {
-        List {
-            ForEach(items) { item in
-                HStack(spacing: 12) {
-                    Image(systemName: item.isCompleted ? "checkmark.circle.fill" : "bell")
-                        .foregroundStyle(item.isCompleted ? .green : .blue)
+        Group {
+            if items.isEmpty {
+                VStack(spacing: 16) {
+                    Image(systemName: "bell.slash")
+                        .font(.system(size: 56))
+                        .foregroundStyle(.secondary)
+                    Text("No reminders yet")
+                        .font(.title3)
+                        .foregroundStyle(.secondary)
+                    Button {
+                        isPresentingAddReminder = true
+                    } label: {
+                        Label("Add Reminder", systemImage: "plus")
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                List {
+                    ForEach(items) { item in
+                        HStack(spacing: 12) {
+                            Image(systemName: item.isCompleted ? "checkmark.circle.fill" : "bell")
+                                .foregroundStyle(item.isCompleted ? .green : .blue)
+                                .onTapGesture {
+                                    toggleCompletion(for: item)
+                                }
+                            
+                            VStack(alignment: .leading, spacing: 2) {
+                                HStack {
+                                    Text(item.title)
+                                        .font(.headline)
+                                        .strikethrough(item.isCompleted)
+                                    
+                                    Spacer()
+                                    
+                                    if item.repeatFrequency != .none {
+                                        Image(systemName: "repeat")
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                }
+                                
+                                HStack {
+                                    Text(formatted(date: item.timestamp))
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
+                                    
+                                    if item.repeatFrequency != .none {
+                                        Text("• \(item.repeatFrequency.displayName)")
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                }
+                            }
+                        }
+                        .padding(.vertical, 4)
+                        .contentShape(Rectangle())
                         .onTapGesture {
-                            toggleCompletion(for: item)
+                            selectedItem = item
+                            isPresentingEditReminder = true
                         }
-                    
-                    VStack(alignment: .leading, spacing: 2) {
-                        HStack {
-                            Text(item.title)
-                                .font(.headline)
-                                .strikethrough(item.isCompleted)
-                            
-                            Spacer()
-                            
-                            if item.repeatFrequency != .none {
-                                Image(systemName: "repeat")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
+                        .contextMenu {
+                            Button("Edit") {
+                                selectedItem = item
+                                isPresentingEditReminder = true
                             }
-                        }
-                        
-                        HStack {
-                            Text(formatted(date: item.timestamp))
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
+                            
+                            Divider()
                             
                             if item.repeatFrequency != .none {
-                                Text("• \(item.repeatFrequency.displayName)")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
+                                Button("Add Next Occurrence") {
+                                    addNextOccurrence(for: item, modelContext: modelContext)
+                                }
+                                
+                                Button("Remove Future Occurrences", role: .destructive) {
+                                    Task {
+                                        await removeAllFutureOccurrences(for: item, modelContext: modelContext)
+                                    }
+                                }
+                                
+                                Divider()
+                            }
+                            
+                            Button("Delete", role: .destructive) {
+                                Task {
+                                    await NotificationManager.shared.handleReminderDeleted(item)
+                                }
+                                modelContext.delete(item)
                             }
                         }
                     }
-                }
-                .padding(.vertical, 4)
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    selectedItem = item
-                    isPresentingEditReminder = true
-                }
-                .contextMenu {
-                    Button("Edit") {
-                        selectedItem = item
-                        isPresentingEditReminder = true
-                    }
-                    
-                    Divider()
-                    
-                    if item.repeatFrequency != .none {
-                        Button("Add Next Occurrence") {
-                            addNextOccurrence(for: item, modelContext: modelContext)
-                        }
-                        
-                        Button("Remove Future Occurrences", role: .destructive) {
-                            Task {
-                                await removeAllFutureOccurrences(for: item, modelContext: modelContext)
-                            }
-                        }
-                        
-                        Divider()
-                    }
-                    
-                    Button("Delete", role: .destructive) {
-                        Task {
-                            await NotificationManager.shared.handleReminderDeleted(item)
-                        }
-                        modelContext.delete(item)
-                    }
+                    .onDelete(perform: delete)
                 }
             }
-            .onDelete(perform: delete)
         }
         .navigationTitle("My Reminders")
         .toolbar {
