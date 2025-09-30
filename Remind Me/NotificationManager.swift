@@ -18,7 +18,6 @@ class NotificationManager: ObservableObject {
     
     // Track reminders that have persistent notifications active
     private var activePeristentReminders: Set<String> = []
-    private let maxPersistentNotifications = 10 // Limit to avoid overwhelming the user
     
     private init() {
         Task {
@@ -87,38 +86,35 @@ class NotificationManager: ObservableObject {
     }
     
     private func schedulePersistentNotifications(for item: Item) async {
-        // Don't schedule persistent notifications for completed items
         guard !item.isCompleted else {
             print("Skipping persistent notifications for completed reminder: \(item.title)")
             return
         }
-        
-        // Add to active persistent reminders
+        guard item.notificationRepeatCount > 0 else {
+            print("No persistent follow-ups configured for: \(item.title)")
+            return
+        }
+
         activePeristentReminders.insert(item.id)
-        
-        // Schedule follow-up notifications every minute for the next 10 minutes
-        for i in 1...maxPersistentNotifications {
-            let followUpDate = item.timestamp.addingTimeInterval(TimeInterval(i * 60)) // i minutes after original
-            
-            // Don't schedule if it would be in the past
+
+        for i in 1...item.notificationRepeatCount {
+            let intervalSeconds = TimeInterval(item.notificationIntervalMinutes * 60 * i)
+            let followUpDate = item.timestamp.addingTimeInterval(intervalSeconds)
             guard followUpDate > Date() else { continue }
-            
+
             let content = createNotificationContent(for: item, isPersistent: true, followUpNumber: i)
-            
             let triggerDate = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: followUpDate)
             let trigger = UNCalendarNotificationTrigger(dateMatching: triggerDate, repeats: false)
-            
             let identifier = "reminder_\(item.id)_followup_\(i)"
             let request = UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
-            
             do {
                 try await UNUserNotificationCenter.current().add(request)
             } catch {
                 print("Error scheduling persistent notification \(i): \(error)")
             }
         }
-        
-        print("Scheduled persistent notifications for: \(item.title)")
+
+        print("Scheduled \(item.notificationRepeatCount) persistent notifications for: \(item.title)")
     }
     
     private func createNotificationContent(for item: Item, isPersistent: Bool, followUpNumber: Int = 0) -> UNMutableNotificationContent {
@@ -184,42 +180,32 @@ class NotificationManager: ObservableObject {
     
     /// Cancel persistent notifications for a specific reminder
     func cancelPersistentNotifications(for reminderID: String) {
-        var identifiersToCancel: [String] = []
-        
-        // Cancel all persistent follow-up notifications
-        for i in 1...maxPersistentNotifications {
-            identifiersToCancel.append("reminder_\(reminderID)_followup_\(i)")
+        Task {
+            let center = UNUserNotificationCenter.current()
+            let pending = await center.pendingNotificationRequests()
+            let ids = pending.map { $0.identifier }.filter { $0.hasPrefix("reminder_\(reminderID)_followup_") }
+            center.removePendingNotificationRequests(withIdentifiers: ids)
+            activePeristentReminders.remove(reminderID)
+            print("Cancelled persistent notifications for reminder: \(reminderID)")
         }
-        
-        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: identifiersToCancel)
-        
-        // Remove from active persistent reminders
-        activePeristentReminders.remove(reminderID)
-        
-        print("Cancelled persistent notifications for reminder: \(reminderID)")
     }
     
     /// Cancel all notifications (main + persistent) for a specific reminder
     private func cancelAllNotificationsForReminder(reminderID: String) async {
-        var identifiersToCancel: [String] = []
-        
-        // Add main notification identifier
-        identifiersToCancel.append("reminder_\(reminderID)")
-        
-        // Add all persistent follow-up identifiers
-        for i in 1...maxPersistentNotifications {
-            identifiersToCancel.append("reminder_\(reminderID)_followup_\(i)")
+        let center = UNUserNotificationCenter.current()
+        let pending = await center.pendingNotificationRequests()
+        let pendingIDs = pending.map { $0.identifier }.filter { id in
+            id == "reminder_\(reminderID)" || id.hasPrefix("reminder_\(reminderID)_followup_")
         }
-        
-        // Cancel all pending notifications
-        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: identifiersToCancel)
-        
-        // Also remove any delivered notifications that might still be in the notification center
-        UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: identifiersToCancel)
-        
-        // Remove from active persistent reminders
+        center.removePendingNotificationRequests(withIdentifiers: pendingIDs)
+
+        let delivered = await center.deliveredNotifications()
+        let deliveredIDs = delivered.map { $0.request.identifier }.filter { id in
+            id == "reminder_\(reminderID)" || id.hasPrefix("reminder_\(reminderID)_followup_")
+        }
+        center.removeDeliveredNotifications(withIdentifiers: deliveredIDs)
+
         activePeristentReminders.remove(reminderID)
-        
         print("Cancelled all notifications (pending and delivered) for reminder: \(reminderID)")
     }
     
@@ -296,7 +282,10 @@ class NotificationManager: ObservableObject {
                 let snoozeReminder = Item(
                     timestamp: snoozeDate,
                     title: item.title + " (Snoozed)",
-                    repeatFrequency: .none
+                    repeatFrequency: .none,
+                    parentReminderID: nil,
+                    notificationIntervalMinutes: item.notificationIntervalMinutes,
+                    notificationRepeatCount: item.notificationRepeatCount
                 )
                 modelContext.insert(snoozeReminder)
                 try modelContext.save()
@@ -322,18 +311,21 @@ class NotificationManager: ObservableObject {
     
     /// Stop all persistent notifications (emergency stop)
     func stopAllPersistentNotifications() {
-        var identifiersToCancel: [String] = []
-        
-        for reminderID in activePeristentReminders {
-            for i in 1...maxPersistentNotifications {
-                identifiersToCancel.append("reminder_\(reminderID)_followup_\(i)")
+        Task {
+            let center = UNUserNotificationCenter.current()
+            let pending = await center.pendingNotificationRequests()
+            var identifiersToCancel: [String] = []
+
+            for reminderID in activePeristentReminders {
+                let ids = pending.map { $0.identifier }.filter { $0.hasPrefix("reminder_\(reminderID)_followup_") }
+                identifiersToCancel.append(contentsOf: ids)
             }
+
+            UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: identifiersToCancel)
+            activePeristentReminders.removeAll()
+
+            print("Stopped all persistent notifications")
         }
-        
-        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: identifiersToCancel)
-        activePeristentReminders.removeAll()
-        
-        print("Stopped all persistent notifications")
     }
     
     /// Call this method when a reminder is marked as completed from the UI

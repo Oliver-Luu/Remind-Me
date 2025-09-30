@@ -14,7 +14,9 @@ func addRepeatingReminders(
     startDate: Date,
     repeatFrequency: RepeatFrequency,
     numberOfOccurrences: Int,
-    modelContext: ModelContext
+    modelContext: ModelContext,
+    notificationIntervalMinutes: Int,
+    notificationRepeatCount: Int
 ) {
     // Create a unique ID for this set of repeating reminders
     let parentID = UUID().uuidString
@@ -25,7 +27,9 @@ func addRepeatingReminders(
         timestamp: startDate,
         title: title,
         repeatFrequency: repeatFrequency,
-        parentReminderID: repeatFrequency == .none ? nil : parentID
+        parentReminderID: repeatFrequency == .none ? nil : parentID,
+        notificationIntervalMinutes: notificationIntervalMinutes,
+        notificationRepeatCount: notificationRepeatCount
     )
     modelContext.insert(initialReminder)
     remindersToSchedule.append(initialReminder)
@@ -49,7 +53,9 @@ func addRepeatingReminders(
             timestamp: currentDate,
             title: title,
             repeatFrequency: repeatFrequency,
-            parentReminderID: parentID
+            parentReminderID: parentID,
+            notificationIntervalMinutes: notificationIntervalMinutes,
+            notificationRepeatCount: notificationRepeatCount
         )
         modelContext.insert(reminder)
         remindersToSchedule.append(reminder)

@@ -5,6 +5,8 @@ struct RemindersListView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: [SortDescriptor(\Item.timestamp, order: .forward)]) private var items: [Item]
     @State private var isPresentingAddReminder = false
+    @State private var selectedItem: Item?
+    @State private var isPresentingEditReminder = false
 
     var body: some View {
         List {
@@ -45,7 +47,19 @@ struct RemindersListView: View {
                     }
                 }
                 .padding(.vertical, 4)
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    selectedItem = item
+                    isPresentingEditReminder = true
+                }
                 .contextMenu {
+                    Button("Edit") {
+                        selectedItem = item
+                        isPresentingEditReminder = true
+                    }
+                    
+                    Divider()
+                    
                     if item.repeatFrequency != .none {
                         Button("Add Next Occurrence") {
                             addNextOccurrence(for: item, modelContext: modelContext)
@@ -56,6 +70,8 @@ struct RemindersListView: View {
                                 await removeAllFutureOccurrences(for: item, modelContext: modelContext)
                             }
                         }
+                        
+                        Divider()
                     }
                     
                     Button("Delete", role: .destructive) {
@@ -83,6 +99,15 @@ struct RemindersListView: View {
                 AddReminderView()
                     .presentationDetents([.fraction(0.8)])
                     .presentationDragIndicator(.visible)
+            }
+        }
+        .sheet(isPresented: $isPresentingEditReminder) {
+            NavigationStack {
+                if let selectedItem = selectedItem {
+                    EditReminderView(item: selectedItem)
+                        .presentationDetents([.fraction(0.8)])
+                        .presentationDragIndicator(.visible)
+                }
             }
         }
     }

@@ -116,7 +116,10 @@ class InAppNotificationManager: ObservableObject {
             let snoozeReminder = Item(
                 timestamp: snoozeDate,
                 title: item.title + " (Snoozed)",
-                repeatFrequency: .none
+                repeatFrequency: .none,
+                parentReminderID: nil,
+                notificationIntervalMinutes: item.notificationIntervalMinutes,
+                notificationRepeatCount: item.notificationRepeatCount
             )
             
             modelContext.insert(snoozeReminder)
@@ -211,3 +214,4 @@ class InAppNotificationManager: ObservableObject {
         timer?.invalidate()
     }
 }
+

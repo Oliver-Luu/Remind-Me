@@ -9,6 +9,8 @@ struct AddReminderView: View {
     @State private var title = ""
     @State private var repeatFrequency = RepeatFrequency.none
     @State private var numberOfOccurrences = 7 // Default number of future reminders to create
+    @State private var notificationIntervalMinutes: Int = 1
+    @State private var notificationRepeatCount: Int = 10
 
     var body: some View {
         Form {
@@ -29,6 +31,21 @@ struct AddReminderView: View {
                     Stepper("Create \(numberOfOccurrences) future reminders", value: $numberOfOccurrences, in: 1...50)
                         .help("Number of future repeating reminders to create")
                 }
+            }
+            
+            Section("Notification Options") {
+                Picker("Follow-up interval", selection: $notificationIntervalMinutes) {
+                    Text("1 min").tag(1)
+                    Text("2 min").tag(2)
+                    Text("5 min").tag(5)
+                    Text("10 min").tag(10)
+                    Text("15 min").tag(15)
+                    Text("30 min").tag(30)
+                }
+                .pickerStyle(.menu)
+
+                Stepper("Send follow-ups: \(notificationRepeatCount) times", value: $notificationRepeatCount, in: 0...30)
+                    .help("How many additional notifications to send after the first one. Set to 0 to disable follow-ups.")
             }
         }
         .navigationTitle("Add Reminder")
@@ -53,7 +70,9 @@ struct AddReminderView: View {
             startDate: date,
             repeatFrequency: repeatFrequency,
             numberOfOccurrences: numberOfOccurrences,
-            modelContext: modelContext
+            modelContext: modelContext,
+            notificationIntervalMinutes: notificationIntervalMinutes,
+            notificationRepeatCount: notificationRepeatCount
         )
         dismiss()
     }
@@ -65,3 +84,4 @@ struct AddReminderView: View {
     }
     .modelContainer(for: Item.self, inMemory: true)
 }
+
