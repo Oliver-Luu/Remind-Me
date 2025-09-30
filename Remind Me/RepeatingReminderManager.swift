@@ -13,6 +13,7 @@ func addRepeatingReminders(
     title: String,
     startDate: Date,
     repeatFrequency: RepeatFrequency,
+    repeatInterval: Int,
     numberOfOccurrences: Int,
     modelContext: ModelContext,
     notificationIntervalMinutes: Int,
@@ -29,7 +30,8 @@ func addRepeatingReminders(
         repeatFrequency: repeatFrequency,
         parentReminderID: repeatFrequency == .none ? nil : parentID,
         notificationIntervalMinutes: notificationIntervalMinutes,
-        notificationRepeatCount: notificationRepeatCount
+        notificationRepeatCount: notificationRepeatCount,
+        repeatInterval: repeatInterval
     )
     modelContext.insert(initialReminder)
     remindersToSchedule.append(initialReminder)
@@ -47,7 +49,7 @@ func addRepeatingReminders(
     var currentDate = startDate
     
     for _ in 1..<numberOfOccurrences {
-        currentDate = nextOccurrenceDate(from: currentDate, frequency: repeatFrequency, calendar: calendar)
+        currentDate = nextOccurrenceDate(from: currentDate, frequency: repeatFrequency, interval: repeatInterval, calendar: calendar)
         
         let reminder = Item(
             timestamp: currentDate,
@@ -55,7 +57,8 @@ func addRepeatingReminders(
             repeatFrequency: repeatFrequency,
             parentReminderID: parentID,
             notificationIntervalMinutes: notificationIntervalMinutes,
-            notificationRepeatCount: notificationRepeatCount
+            notificationRepeatCount: notificationRepeatCount,
+            repeatInterval: repeatInterval
         )
         modelContext.insert(reminder)
         remindersToSchedule.append(reminder)
@@ -68,33 +71,38 @@ func addRepeatingReminders(
 }
 
 /// Calculates the next occurrence date based on the repeat frequency
-private func nextOccurrenceDate(from date: Date, frequency: RepeatFrequency, calendar: Calendar) -> Date {
+private func nextOccurrenceDate(from date: Date, frequency: RepeatFrequency, interval: Int, calendar: Calendar) -> Date {
     switch frequency {
     case .none:
         return date
     case .daily:
-        return calendar.date(byAdding: .day, value: 1, to: date) ?? date
+        return calendar.date(byAdding: .day, value: interval, to: date) ?? date
     case .weekly:
-        return calendar.date(byAdding: .weekOfYear, value: 1, to: date) ?? date
+        return calendar.date(byAdding: .weekOfYear, value: interval, to: date) ?? date
     case .monthly:
-        return calendar.date(byAdding: .month, value: 1, to: date) ?? date
+        return calendar.date(byAdding: .month, value: interval, to: date) ?? date
     case .yearly:
-        return calendar.date(byAdding: .year, value: 1, to: date) ?? date
+        return calendar.date(byAdding: .year, value: interval, to: date) ?? date
+    case .custom:
+        return date
     }
 }
 
 /// Creates a single additional occurrence for an existing repeating reminder
 func addNextOccurrence(for item: Item, modelContext: ModelContext) {
-    guard item.repeatFrequency != .none else { return }
+    guard item.repeatFrequency != .none && item.repeatFrequency != .custom else { return }
     
     let calendar = Calendar.current
-    let nextDate = nextOccurrenceDate(from: item.timestamp, frequency: item.repeatFrequency, calendar: calendar)
+    let nextDate = nextOccurrenceDate(from: item.timestamp, frequency: item.repeatFrequency, interval: max(1, item.repeatInterval), calendar: calendar)
     
     let nextReminder = Item(
         timestamp: nextDate,
         title: item.title,
         repeatFrequency: item.repeatFrequency,
-        parentReminderID: item.parentReminderID
+        parentReminderID: item.parentReminderID,
+        notificationIntervalMinutes: item.notificationIntervalMinutes,
+        notificationRepeatCount: item.notificationRepeatCount,
+        repeatInterval: item.repeatInterval
     )
     modelContext.insert(nextReminder)
     

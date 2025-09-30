@@ -14,9 +14,31 @@ enum RepeatFrequency: String, CaseIterable, Codable {
     case weekly = "Weekly"
     case monthly = "Monthly"
     case yearly = "Yearly"
+    case custom = "Custom"
     
     var displayName: String {
         return self.rawValue
+    }
+
+    func unitName(for count: Int) -> String {
+        switch self {
+        case .none: return count == 1 ? "time" : "times"
+        case .daily: return count == 1 ? "day" : "days"
+        case .weekly: return count == 1 ? "week" : "weeks"
+        case .monthly: return count == 1 ? "month" : "months"
+        case .yearly: return count == 1 ? "year" : "years"
+        case .custom: return count == 1 ? "date" : "dates"
+        }
+    }
+    
+    func display(interval: Int) -> String {
+        switch self {
+        case .custom:
+            return "Custom"
+        default:
+            if interval <= 1 { return self.displayName }
+            return "Every \(interval) \(unitName(for: interval))"
+        }
     }
 }
 
@@ -25,6 +47,7 @@ final class Item {
     var timestamp: Date
     var title: String
     var repeatFrequency: RepeatFrequency
+    var repeatInterval: Int
     var notificationIntervalMinutes: Int
     var notificationRepeatCount: Int
     var isCompleted: Bool
@@ -37,11 +60,13 @@ final class Item {
         repeatFrequency: RepeatFrequency = .none,
         parentReminderID: String? = nil,
         notificationIntervalMinutes: Int = 1,
-        notificationRepeatCount: Int = 10
+        notificationRepeatCount: Int = 10,
+        repeatInterval: Int = 1
     ) {
         self.timestamp = timestamp
         self.title = title
         self.repeatFrequency = repeatFrequency
+        self.repeatInterval = repeatInterval
         self.notificationIntervalMinutes = notificationIntervalMinutes
         self.notificationRepeatCount = notificationRepeatCount
         self.isCompleted = false

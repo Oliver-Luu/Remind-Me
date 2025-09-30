@@ -9,16 +9,22 @@ struct EditReminderView: View {
     @State private var date: Date
     @State private var title: String
     @State private var repeatFrequency: RepeatFrequency
+    @State private var repeatInterval: Int
     @State private var isCompleted: Bool
     @State private var notificationIntervalMinutes: Int
     @State private var notificationRepeatCount: Int
+    @State private var futureCount: Int = 7
     @State private var showingEditOptionsAlert = false
+    
+    @State private var showCustomDatePicker = false
+    @State private var customSelectedDates: Set<DateComponents> = []
     
     init(item: Item) {
         self.item = item
         self._date = State(initialValue: item.timestamp)
         self._title = State(initialValue: item.title)
         self._repeatFrequency = State(initialValue: item.repeatFrequency)
+        self._repeatInterval = State(initialValue: item.repeatInterval)
         self._isCompleted = State(initialValue: item.isCompleted)
         self._notificationIntervalMinutes = State(initialValue: item.notificationIntervalMinutes)
         self._notificationRepeatCount = State(initialValue: item.notificationRepeatCount)
@@ -28,7 +34,11 @@ struct EditReminderView: View {
         Form {
             Section("Reminder Details") {
                 TextField("Reminder Title", text: $title)
-                DatePicker("Select Date and Time", selection: $date, displayedComponents: [.date, .hourAndMinute])
+                if repeatFrequency == .custom {
+                    DatePicker("Select Time", selection: $date, displayedComponents: [.hourAndMinute])
+                } else {
+                    DatePicker("Select Date and Time", selection: $date, displayedComponents: [.date, .hourAndMinute])
+                }
             }
             
             Section("Status") {
@@ -36,26 +46,45 @@ struct EditReminderView: View {
             }
             
             Section("Repeat Options") {
-                Picker("Repeat", selection: $repeatFrequency) {
-                    ForEach(RepeatFrequency.allCases, id: \.self) { frequency in
-                        Text(frequency.displayName).tag(frequency)
-                    }
-                }
-                .pickerStyle(.menu)
-                
-                if item.repeatFrequency != .none && item.parentReminderID != nil {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("This is part of a repeating reminder series")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        
-                        Button("Edit All in Series") {
-                            showingEditOptionsAlert = true
+                if item.parentReminderID == nil {
+                    Picker("Repeat", selection: $repeatFrequency) {
+                        ForEach(RepeatFrequency.allCases, id: \.self) { frequency in
+                            Text(frequency.displayName).tag(frequency)
                         }
-                        .buttonStyle(.bordered)
-                        .font(.caption)
                     }
-                    .padding(.vertical, 4)
+                    .pickerStyle(.menu)
+                    
+                    if repeatFrequency == .custom {
+                        Button {
+                            showCustomDatePicker = true
+                        } label: {
+                            Label("Choose dates", systemImage: "calendar")
+                        }
+                        if !customSelectedDates.isEmpty {
+                            Text("Selected: \(customSelectedDates.count) date\(customSelectedDates.count == 1 ? "" : "s")")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        } else {
+                            Text("No dates selected yet")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    
+                    if repeatFrequency != .none && repeatFrequency != .custom {
+                        Stepper("Every \(repeatInterval) \(repeatFrequency.unitName(for: repeatInterval))", value: $repeatInterval, in: 1...52)
+                        Stepper("Create \(futureCount) future reminders", value: $futureCount, in: 0...200)
+                    }
+                } else {
+                    HStack {
+                        Text("Repeats")
+                        Spacer()
+                        Text(item.repeatFrequency.displayName)
+                            .foregroundStyle(.secondary)
+                    }
+                    Text("Repeat options are managed by the series and can't be changed on a single occurrence.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
             }
             
@@ -72,16 +101,6 @@ struct EditReminderView: View {
 
                 Stepper("Send follow-ups: \(notificationRepeatCount) times", value: $notificationRepeatCount, in: 0...30)
                     .help("How many additional notifications to send after the first one. Set to 0 to disable follow-ups.")
-            }
-            
-            if hasChanges {
-                Section {
-                    Button("Save Changes") {
-                        saveChanges()
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                }
             }
         }
         .navigationTitle("Edit Reminder")
@@ -113,12 +132,18 @@ struct EditReminderView: View {
         } message: {
             Text("Do you want to edit only this reminder or all reminders in the series?")
         }
+        .sheet(isPresented: $showCustomDatePicker) {
+            CustomRepeatSelectionView(selectedDates: $customSelectedDates)
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
+        }
     }
     
     private var hasChanges: Bool {
         return item.timestamp != date ||
                item.title != title.trimmingCharacters(in: .whitespacesAndNewlines) ||
                item.repeatFrequency != repeatFrequency ||
+               item.repeatInterval != repeatInterval ||
                item.isCompleted != isCompleted ||
                item.notificationIntervalMinutes != notificationIntervalMinutes ||
                item.notificationRepeatCount != notificationRepeatCount
@@ -136,31 +161,133 @@ struct EditReminderView: View {
     
     private func saveChangesThisOnly() {
         Task {
-            // Cancel existing notifications for this item
-            await NotificationManager.shared.handleReminderDeleted(item)
+            let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+            let wasOneTime = (item.parentReminderID == nil && item.repeatFrequency == .none)
+            let willBeRepeating = (repeatFrequency != .none)
             
-            // Update the item
-            item.timestamp = date
-            item.title = title.trimmingCharacters(in: .whitespacesAndNewlines)
-            item.repeatFrequency = repeatFrequency
-            item.notificationIntervalMinutes = notificationIntervalMinutes
-            item.notificationRepeatCount = notificationRepeatCount
-            
-            // Handle completion status change
-            if item.isCompleted != isCompleted {
+            if wasOneTime && repeatFrequency == .custom {
+                let parentID = UUID().uuidString
+                item.timestamp = date
+                item.title = trimmedTitle
+                item.repeatFrequency = .custom
+                item.repeatInterval = 1
+                item.notificationIntervalMinutes = notificationIntervalMinutes
+                item.notificationRepeatCount = notificationRepeatCount
+                item.parentReminderID = parentID
                 item.isCompleted = isCompleted
-                if isCompleted {
-                    await NotificationManager.shared.handleReminderCompleted(item)
+
+                var toSchedule: [Item] = []
+                if !item.isCompleted { toSchedule.append(item) }
+
+                let calendar = Calendar.current
+                let timeComponents = calendar.dateComponents([.hour, .minute, .second], from: date)
+                let sortedDates = customSelectedDates.sorted { lhs, rhs in
+                    let l = calendar.date(from: lhs) ?? Date.distantPast
+                    let r = calendar.date(from: rhs) ?? Date.distantPast
+                    return l < r
                 }
+
+                for dayComponents in sortedDates {
+                    var comps = dayComponents
+                    comps.hour = timeComponents.hour
+                    comps.minute = timeComponents.minute
+                    comps.second = timeComponents.second
+                    if let scheduledDate = calendar.date(from: comps) {
+                        if scheduledDate == item.timestamp { continue }
+                        let newItem = Item(
+                            timestamp: scheduledDate,
+                            title: trimmedTitle,
+                            repeatFrequency: .custom,
+                            parentReminderID: parentID,
+                            notificationIntervalMinutes: notificationIntervalMinutes,
+                            notificationRepeatCount: notificationRepeatCount,
+                            repeatInterval: 1
+                        )
+                        modelContext.insert(newItem)
+                        if !newItem.isCompleted { toSchedule.append(newItem) }
+                    }
+                }
+
+                try? modelContext.save()
+                await NotificationManager.shared.scheduleNotifications(for: toSchedule)
+            } else if wasOneTime && willBeRepeating {
+                // Convert to a repeating series: assign a parent ID to this item and create future occurrences
+                let parentID = UUID().uuidString
+
+                // Update the current item to be the first in the series
+                item.timestamp = date
+                item.title = trimmedTitle
+                item.repeatFrequency = repeatFrequency
+                item.repeatInterval = repeatInterval
+                item.notificationIntervalMinutes = notificationIntervalMinutes
+                item.notificationRepeatCount = notificationRepeatCount
+                item.parentReminderID = parentID
+                item.isCompleted = isCompleted
+
+                var toSchedule: [Item] = []
+                if !item.isCompleted { toSchedule.append(item) }
+
+                // Create future occurrences based on chosen count
+                var lastDate = date
+                let calendar = Calendar.current
+                for _ in 0..<futureCount {
+                    let nextDate: Date
+                    switch repeatFrequency {
+                    case .daily:
+                        nextDate = calendar.date(byAdding: .day, value: repeatInterval, to: lastDate) ?? lastDate
+                    case .weekly:
+                        nextDate = calendar.date(byAdding: .weekOfYear, value: repeatInterval, to: lastDate) ?? lastDate
+                    case .monthly:
+                        nextDate = calendar.date(byAdding: .month, value: repeatInterval, to: lastDate) ?? lastDate
+                    case .yearly:
+                        nextDate = calendar.date(byAdding: .year, value: repeatInterval, to: lastDate) ?? lastDate
+                    case .none, .custom:
+                        nextDate = lastDate
+                    }
+
+                    let newItem = Item(
+                        timestamp: nextDate,
+                        title: trimmedTitle,
+                        repeatFrequency: repeatFrequency,
+                        parentReminderID: parentID,
+                        notificationIntervalMinutes: notificationIntervalMinutes,
+                        notificationRepeatCount: notificationRepeatCount,
+                        repeatInterval: repeatInterval
+                    )
+                    modelContext.insert(newItem)
+                    if !newItem.isCompleted { toSchedule.append(newItem) }
+                    lastDate = nextDate
+                }
+
+                try? modelContext.save()
+
+                // Schedule notifications for all items in the new series
+                await NotificationManager.shared.scheduleNotifications(for: toSchedule)
+            } else {
+                // Update the item without series conversion
+                item.timestamp = date
+                item.title = trimmedTitle
+                if item.parentReminderID == nil { item.repeatFrequency = repeatFrequency }
+                item.notificationIntervalMinutes = notificationIntervalMinutes
+                item.notificationRepeatCount = notificationRepeatCount
+                item.repeatInterval = repeatInterval
+
+                // Handle completion status change
+                if item.isCompleted != isCompleted {
+                    item.isCompleted = isCompleted
+                    if isCompleted {
+                        await NotificationManager.shared.handleReminderCompleted(item)
+                    }
+                }
+
+                // If not completed, reschedule notifications
+                if !item.isCompleted {
+                    await NotificationManager.shared.scheduleNotification(for: item)
+                }
+
+                try? modelContext.save()
             }
-            
-            // If not completed, reschedule notifications
-            if !item.isCompleted {
-                await NotificationManager.shared.scheduleNotification(for: item)
-            }
-            
-            try? modelContext.save()
-            
+
             await MainActor.run {
                 dismiss()
             }
@@ -183,7 +310,8 @@ struct EditReminderView: View {
             for reminder in relatedReminders {
                 reminder.title = titleChange
                 reminder.timestamp = reminder.timestamp.addingTimeInterval(timeDifference)
-                reminder.repeatFrequency = repeatFrequency
+                // reminder.repeatFrequency = repeatFrequency  // Removed as per instructions
+                reminder.repeatInterval = repeatInterval
                 reminder.notificationIntervalMinutes = notificationIntervalMinutes
                 reminder.notificationRepeatCount = notificationRepeatCount
                 

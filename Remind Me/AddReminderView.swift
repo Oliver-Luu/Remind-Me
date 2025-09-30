@@ -8,15 +8,26 @@ struct AddReminderView: View {
     @State private var date = Date()
     @State private var title = ""
     @State private var repeatFrequency = RepeatFrequency.none
+    @State private var repeatInterval: Int = 1
     @State private var numberOfOccurrences = 7 // Default number of future reminders to create
     @State private var notificationIntervalMinutes: Int = 1
     @State private var notificationRepeatCount: Int = 10
+
+    @State private var showCustomDatePicker = false
+    @State private var customSelectedDates: Set<DateComponents> = []
 
     var body: some View {
         Form {
             Section("Reminder Details") {
                 TextField("Reminder Title", text: $title)
-                DatePicker("Select Date and Time", selection: $date, displayedComponents: [.date, .hourAndMinute])
+                if repeatFrequency == .custom {
+                    DatePicker("Select Time", selection: $date, displayedComponents: [.hourAndMinute])
+                    Text("This time will apply to all selected dates.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                } else {
+                    DatePicker("Select Date and Time", selection: $date, displayedComponents: [.date, .hourAndMinute])
+                }
             }
             
             Section("Repeat Options") {
@@ -27,9 +38,30 @@ struct AddReminderView: View {
                 }
                 .pickerStyle(.menu)
                 
-                if repeatFrequency != .none {
+                if repeatFrequency != .none && repeatFrequency != .custom {
+                    Stepper("Every " + "\(repeatInterval)" + " " + "\(repeatFrequency.unitName(for: repeatInterval))", value: $repeatInterval, in: 1...52)
+                }
+                
+                if repeatFrequency != .none && repeatFrequency != .custom {
                     Stepper("Create \(numberOfOccurrences) future reminders", value: $numberOfOccurrences, in: 1...50)
                         .help("Number of future repeating reminders to create")
+                }
+
+                if repeatFrequency == .custom {
+                    Button {
+                        showCustomDatePicker = true
+                    } label: {
+                        Label("Choose dates", systemImage: "calendar")
+                    }
+                    if !customSelectedDates.isEmpty {
+                        Text("Selected: \(customSelectedDates.count) date\(customSelectedDates.count == 1 ? "" : "s")")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        Text("No dates selected yet")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                 }
             }
             
@@ -62,13 +94,55 @@ struct AddReminderView: View {
                 .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
         }
+        .sheet(isPresented: $showCustomDatePicker) {
+            CustomRepeatSelectionView(selectedDates: $customSelectedDates)
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
+        }
     }
 
     private func save() {
+        let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        if repeatFrequency == .custom {
+            // Create a parent ID for the custom series
+            let parentID = UUID().uuidString
+            var remindersToSchedule: [Item] = []
+            let calendar = Calendar.current
+            // Keep the time components from `date`
+            let timeComponents = calendar.dateComponents([.hour, .minute, .second], from: date)
+            let sortedDates = customSelectedDates.sorted { lhs, rhs in
+                let l = calendar.date(from: lhs) ?? Date.distantPast
+                let r = calendar.date(from: rhs) ?? Date.distantPast
+                return l < r
+            }
+            for dayComponents in sortedDates {
+                var comps = dayComponents
+                comps.hour = timeComponents.hour
+                comps.minute = timeComponents.minute
+                comps.second = timeComponents.second
+                if let scheduledDate = calendar.date(from: comps) {
+                    let item = Item(
+                        timestamp: scheduledDate,
+                        title: trimmedTitle,
+                        repeatFrequency: .custom,
+                        parentReminderID: parentID,
+                        notificationIntervalMinutes: notificationIntervalMinutes,
+                        notificationRepeatCount: notificationRepeatCount,
+                        repeatInterval: 1
+                    )
+                    modelContext.insert(item)
+                    remindersToSchedule.append(item)
+                }
+            }
+            Task { await NotificationManager.shared.scheduleNotifications(for: remindersToSchedule) }
+            dismiss()
+            return
+        }
         addRepeatingReminders(
-            title: title.trimmingCharacters(in: .whitespacesAndNewlines),
+            title: trimmedTitle,
             startDate: date,
             repeatFrequency: repeatFrequency,
+            repeatInterval: repeatInterval,
             numberOfOccurrences: numberOfOccurrences,
             modelContext: modelContext,
             notificationIntervalMinutes: notificationIntervalMinutes,
