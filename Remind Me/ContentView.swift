@@ -103,10 +103,12 @@ struct ContentView: View {
         }
     }
 
-    // Computed property to format time
+    // Computed property to format time that respects the user's 12/24‑hour preference
     private var formattedTime: String {
         let formatter = DateFormatter()
-        formatter.dateFormat = "HH:mm:ss" // 24-hour format
+        formatter.locale = .autoupdatingCurrent
+        // Use a localized template so the hour cycle (12/24h) follows user settings while including seconds.
+        formatter.setLocalizedDateFormatFromTemplate("j:mm:ss")
         return formatter.string(from: currentTime)
     }
 
