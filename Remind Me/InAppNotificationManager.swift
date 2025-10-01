@@ -52,7 +52,7 @@ class InAppNotificationManager: ObservableObject {
             addNotificationSafely(item)
             return
         }
-        let info: [String: Any] = ["id": item.id, "item": item]
+        let info: [String: Any] = ["id": item.id]
         let timer = Timer(fireAt: fireDate, interval: 0, target: self, selector: #selector(inAppTriggerFired(_:)), userInfo: info, repeats: false)
         RunLoop.main.add(timer, forMode: .common)
         scheduledTimers[item.id] = timer
@@ -69,22 +69,17 @@ class InAppNotificationManager: ObservableObject {
     @objc private func inAppTriggerFired(_ timer: Timer) {
         defer { timer.invalidate() }
         var itemID: String? = nil
-        var itemToNotify: Item? = nil
         if let info = timer.userInfo as? [String: Any] {
             itemID = info["id"] as? String
-            if let item = info["item"] as? Item {
-                itemToNotify = item
-            }
         } else if let id = timer.userInfo as? String {
             itemID = id
         }
         if let id = itemID {
             scheduledTimers.removeValue(forKey: id)
         }
-        if itemToNotify == nil, let id = itemID {
-            itemToNotify = fetchItem(withID: id)
+        guard let id = itemID, let item = fetchItem(withID: id), !item.isCompleted else {
+            return
         }
-        guard let item = itemToNotify else { return }
         addNotificationSafely(item)
     }
 

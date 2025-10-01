@@ -13,6 +13,8 @@ struct ReminderSeries: Identifiable {
     }
 
     var totalCount: Int { items.count }
+    
+    var allCompleted: Bool { items.allSatisfy { $0.isCompleted } }
 }
 
 struct SeriesID: Identifiable { let id: String }
@@ -80,12 +82,13 @@ struct RemindersListView: View {
                                     ReminderSeriesDetailView(parentID: series.id)
                                 } label: {
                                     HStack(spacing: 12) {
-                                        Image(systemName: "repeat")
-                                            .foregroundStyle(.blue)
+                                        Image(systemName: series.allCompleted ? "checkmark.circle.fill" : "repeat")
+                                            .foregroundStyle(series.allCompleted ? .green : .blue)
 
                                         VStack(alignment: .leading, spacing: 2) {
                                             Text(series.title)
                                                 .font(.headline)
+                                                .strikethrough(series.allCompleted)
 
                                             HStack(spacing: 8) {
                                                 if let next = series.nextUpcoming {
@@ -151,13 +154,6 @@ struct RemindersListView: View {
                                     }
                                 }
                                 .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                                    Button {
-                                        editingSeries = SeriesID(id: series.id)
-                                    } label: {
-                                        Label("Edit", systemImage: "pencil")
-                                    }
-                                    .tint(.blue)
-
                                     Button(role: .destructive) {
                                         Task {
                                             await NotificationManager.shared.cancelNotifications(for: series.items)
@@ -168,6 +164,13 @@ struct RemindersListView: View {
                                     } label: {
                                         Label("Delete", systemImage: "trash")
                                     }
+
+                                    Button {
+                                        editingSeries = SeriesID(id: series.id)
+                                    } label: {
+                                        Label("Edit", systemImage: "pencil")
+                                    }
+                                    .tint(.blue)
                                 }
                             }
                         }
@@ -193,8 +196,10 @@ struct RemindersListView: View {
                                             .font(.subheadline)
                                             .foregroundStyle(.secondary)
                                     }
+                                    Spacer()
                                 }
                                 .padding(.vertical, 4)
+                                .frame(maxWidth: .infinity, alignment: .leading)
                                 .contentShape(Rectangle())
                                 .onTapGesture {
                                     selectedItem = item

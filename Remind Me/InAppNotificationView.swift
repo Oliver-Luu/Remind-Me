@@ -69,48 +69,32 @@ struct InAppNotificationView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                         
                         // Action buttons
-                        HStack(spacing: 12) {
-                            Button("Complete") {
-                                completeCurrentReminder()
-                            }
-                            .buttonStyle(.borderedProminent)
-                            .tint(.green)
-                            
-                            Menu("Snooze") {
-                                Button("5 minutes") {
-                                    snoozeCurrentReminder(minutes: 5)
-                                }
-                                Button("10 minutes") {
-                                    snoozeCurrentReminder(minutes: 10)
-                                }
-                                Button("15 minutes") {
-                                    snoozeCurrentReminder(minutes: 15)
-                                }
-                                Button("30 minutes") {
-                                    snoozeCurrentReminder(minutes: 30)
-                                }
-                                Button("1 hour") {
-                                    snoozeCurrentReminder(minutes: 60)
+                        ViewThatFits(in: .horizontal) {
+                            HStack(spacing: 12) {
+                                completeButton
+                                snoozeMenu
+                                Spacer()
+                                if inAppNotificationManager.activeNotifications.count > 1 {
+                                    nextButton
+                                    dismissAllButton
                                 }
                             }
-                            .buttonStyle(.bordered)
-                            .tint(.orange)
-                            
-                            Spacer()
-                            
-                            if inAppNotificationManager.activeNotifications.count > 1 {
-                                Button("Next") {
-                                    showNextNotification()
+                            VStack(spacing: 12) {
+                                HStack(spacing: 12) {
+                                    completeButton
+                                    Spacer()
+                                    snoozeMenu
                                 }
-                                .buttonStyle(.bordered)
-                            }
-                            
-                            if inAppNotificationManager.activeNotifications.count > 1 {
-                                Button("Dismiss All") {
-                                    inAppNotificationManager.dismissAllNotifications()
+                                .frame(maxWidth: .infinity)
+
+                                if inAppNotificationManager.activeNotifications.count > 1 {
+                                    HStack(spacing: 12) {
+                                        nextButton
+                                        Spacer()
+                                        dismissAllButton
+                                    }
+                                    .frame(maxWidth: .infinity)
                                 }
-                                .buttonStyle(.bordered)
-                                .tint(.red)
                             }
                         }
                         .font(.subheadline)
@@ -133,6 +117,51 @@ struct InAppNotificationView: View {
         }
     }
     
+    private var completeButton: some View {
+        Button(action: { completeCurrentReminder() }) {
+            Label("Complete", systemImage: "checkmark.circle")
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+        }
+        .buttonStyle(.borderedProminent)
+        .tint(.green)
+    }
+
+    private var snoozeMenu: some View {
+        Menu {
+            Button("5 minutes") { snoozeCurrentReminder(minutes: 5) }
+            Button("10 minutes") { snoozeCurrentReminder(minutes: 10) }
+            Button("15 minutes") { snoozeCurrentReminder(minutes: 15) }
+            Button("30 minutes") { snoozeCurrentReminder(minutes: 30) }
+            Button("1 hour") { snoozeCurrentReminder(minutes: 60) }
+        } label: {
+            Label("Snooze", systemImage: "zzz")
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+        }
+        .buttonStyle(.bordered)
+        .tint(.orange)
+    }
+
+    private var nextButton: some View {
+        Button(action: { showNextNotification() }) {
+            Label("Next", systemImage: "chevron.right")
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+        }
+        .buttonStyle(.bordered)
+    }
+
+    private var dismissAllButton: some View {
+        Button(action: { inAppNotificationManager.dismissAllNotifications() }) {
+            Label("Dismiss All", systemImage: "xmark.circle")
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+        }
+        .buttonStyle(.bordered)
+        .tint(.red)
+    }
+
     private func formattedDateTime(_ date: Date) -> String {
         let formatter = DateFormatter()
         formatter.dateStyle = .none
@@ -203,3 +232,4 @@ struct InAppNotificationView: View {
         InAppNotificationView(inAppNotificationManager: manager)
     }
 }
+
