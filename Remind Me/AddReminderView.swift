@@ -4,8 +4,9 @@ import SwiftData
 struct AddReminderView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var inAppNotificationManager: InAppNotificationManager
 
-    @State private var date = Date()
+    @State private var date: Date = Calendar.current.date(byAdding: .minute, value: 1, to: Date()) ?? Date().addingTimeInterval(60)
     @State private var title = ""
     @State private var repeatFrequency = RepeatFrequency.none
     @State private var repeatInterval: Int = 1
@@ -103,13 +104,14 @@ struct AddReminderView: View {
 
     private func save() {
         let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        let normalizedDate = floorToMinute(date)
         if repeatFrequency == .custom {
             // Create a parent ID for the custom series
             let parentID = UUID().uuidString
             var remindersToSchedule: [Item] = []
             let calendar = Calendar.current
             // Keep the time components from `date`
-            let timeComponents = calendar.dateComponents([.hour, .minute, .second], from: date)
+            let timeComponents = calendar.dateComponents([.hour, .minute], from: normalizedDate)
             let sortedDates = customSelectedDates.sorted { lhs, rhs in
                 let l = calendar.date(from: lhs) ?? Date.distantPast
                 let r = calendar.date(from: rhs) ?? Date.distantPast
@@ -119,10 +121,11 @@ struct AddReminderView: View {
                 var comps = dayComponents
                 comps.hour = timeComponents.hour
                 comps.minute = timeComponents.minute
-                comps.second = timeComponents.second
+                comps.second = 0
                 if let scheduledDate = calendar.date(from: comps) {
+                    let normalizedScheduled = floorToMinute(scheduledDate, calendar: calendar)
                     let item = Item(
-                        timestamp: scheduledDate,
+                        timestamp: normalizedScheduled,
                         title: trimmedTitle,
                         repeatFrequency: .custom,
                         parentReminderID: parentID,
@@ -134,13 +137,23 @@ struct AddReminderView: View {
                     remindersToSchedule.append(item)
                 }
             }
+            try? modelContext.save()
+            // Schedule precise in-app triggers for all newly created reminders
+            for it in remindersToSchedule {
+                inAppNotificationManager.scheduleInAppTrigger(for: it)
+            }
+            // If any newly created reminder is already due (within a small past grace), show now
+            let now = Date()
+            for it in remindersToSchedule where it.timestamp <= now && it.timestamp >= now.addingTimeInterval(-10) {
+                inAppNotificationManager.addNotificationSafely(it)
+            }
             Task { await NotificationManager.shared.scheduleNotifications(for: remindersToSchedule) }
             dismiss()
             return
         }
-        addRepeatingReminders(
+        let initial = addRepeatingReminders(
             title: trimmedTitle,
-            startDate: date,
+            startDate: normalizedDate,
             repeatFrequency: repeatFrequency,
             repeatInterval: repeatInterval,
             numberOfOccurrences: numberOfOccurrences,
@@ -148,6 +161,13 @@ struct AddReminderView: View {
             notificationIntervalMinutes: notificationIntervalMinutes,
             notificationRepeatCount: notificationRepeatCount
         )
+        // Schedule precise in-app trigger for the initial reminder
+        inAppNotificationManager.scheduleInAppTrigger(for: initial)
+        // If the initial reminder is already due (within a small past grace), show now
+        let now = Date()
+        if initial.timestamp <= now && initial.timestamp >= now.addingTimeInterval(-10) {
+            inAppNotificationManager.addNotificationSafely(initial)
+        }
         dismiss()
     }
 }
@@ -158,4 +178,3 @@ struct AddReminderView: View {
     }
     .modelContainer(for: Item.self, inMemory: true)
 }
-

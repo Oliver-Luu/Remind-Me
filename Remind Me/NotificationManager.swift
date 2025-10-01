@@ -47,20 +47,27 @@ class NotificationManager: ObservableObject {
     
     /// Schedule a notification for a reminder with persistent follow-ups
     func scheduleNotification(for item: Item) async {
-        // Make sure we have permission
-        guard authorizationStatus == .authorized else {
-            print("Notifications not authorized")
+        // Proceed if not denied; allow authorized, provisional, and ephemeral statuses
+        guard authorizationStatus != .denied else {
+            print("Notifications denied by user")
             return
         }
         
-        // Don't schedule notifications for past dates
-        guard item.timestamp > Date() else {
-            print("Skipping notification for past reminder: \(item.title)")
-            return
+        // Handle near-past timestamps with a small grace window to avoid missing the intended minute
+        let now = Date()
+        if item.timestamp <= now {
+            let delta = now.timeIntervalSince(item.timestamp)
+            if delta <= 59 {
+                // Deliver the initial notification immediately (or as soon as possible)
+                await scheduleImmediateInitialNotification(for: item)
+            } else {
+                print("Skipping notification for past reminder: \(item.title)")
+                return
+            }
+        } else {
+            // Schedule the initial notification at the exact second
+            await scheduleInitialNotification(for: item)
         }
-        
-        // Schedule the initial notification
-        await scheduleInitialNotification(for: item)
         
         // Schedule persistent follow-up notifications
         await schedulePersistentNotifications(for: item)
@@ -69,9 +76,9 @@ class NotificationManager: ObservableObject {
     private func scheduleInitialNotification(for item: Item) async {
         let content = createNotificationContent(for: item, isPersistent: false)
         
-        // Create trigger for the exact time
-        let triggerDate = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: item.timestamp)
-        let trigger = UNCalendarNotificationTrigger(dateMatching: triggerDate, repeats: false)
+        // Use a precise time-interval trigger to avoid calendar rounding issues
+        let interval = max(1, item.timestamp.timeIntervalSinceNow)
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: interval, repeats: false)
         
         // Create request with unique identifier
         let identifier = "reminder_\(item.id)"
@@ -82,6 +89,19 @@ class NotificationManager: ObservableObject {
             print("Scheduled initial notification for: \(item.title) at \(item.timestamp)")
         } catch {
             print("Error scheduling initial notification: \(error)")
+        }
+    }
+
+    private func scheduleImmediateInitialNotification(for item: Item) async {
+        let content = createNotificationContent(for: item, isPersistent: false)
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
+        let identifier = "reminder_\(item.id)"
+        let request = UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
+        do {
+            try await UNUserNotificationCenter.current().add(request)
+            print("Scheduled immediate initial notification for: \(item.title) (grace window)")
+        } catch {
+            print("Error scheduling immediate initial notification: \(error)")
         }
     }
     
@@ -103,8 +123,9 @@ class NotificationManager: ObservableObject {
             guard followUpDate > Date() else { continue }
 
             let content = createNotificationContent(for: item, isPersistent: true, followUpNumber: i)
-            let triggerDate = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: followUpDate)
-            let trigger = UNCalendarNotificationTrigger(dateMatching: triggerDate, repeats: false)
+            let interval = followUpDate.timeIntervalSinceNow
+            guard interval > 1 else { continue }
+            let trigger = UNTimeIntervalNotificationTrigger(timeInterval: interval, repeats: false)
             let identifier = "reminder_\(item.id)_followup_\(i)"
             let request = UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
             do {
@@ -338,3 +359,4 @@ class NotificationManager: ObservableObject {
         await cancelAllNotificationsForReminder(reminderID: item.id)
     }
 }
+

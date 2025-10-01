@@ -8,73 +8,118 @@
 import SwiftUI
 import SwiftData
 import Combine
+import UIKit
 
 @MainActor
 class InAppNotificationManager: ObservableObject {
     @Published var activeNotifications: [Item] = []
     @Published var showingNotification = false
     
-    private var timer: Timer?
+    // Timers to fire in-app banners exactly at due time
+    private var scheduledTimers: [String: Timer] = [:]
+    
     private var modelContext: ModelContext?
-    private var shownNotificationIDs: Set<String> = [] // Track already shown notifications
+    // Track when a reminder was last shown in-app
+    private var lastShownAt: [String: Date] = [:]
     
     func setup(modelContext: ModelContext) {
         self.modelContext = modelContext
-        startMonitoring()
+        // Schedule triggers for all upcoming reminders
+        Task { @MainActor in
+            self.scheduleAllUpcomingInAppTriggers()
+            self.catchUpPastDueReminders()
+        }
+        // Observe app becoming active to reschedule any missed timers
+        NotificationCenter.default.addObserver(self, selector: #selector(handleAppDidBecomeActive(_:)), name: UIApplication.didBecomeActiveNotification, object: nil)
     }
     
-    private func startMonitoring() {
-        // Check for due reminders every 5 seconds
-        timer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { [weak self] _ in
-            Task { @MainActor in
-                await self?.checkForDueReminders()
-                self?.cleanupOldShownIDs()
+    @objc private func handleAppDidBecomeActive(_ notification: Notification) {
+        // Reschedule any missed timers when app becomes active
+        scheduleAllUpcomingInAppTriggers()
+        catchUpPastDueReminders()
+    }
+    
+    /// Schedule an exact in-app trigger for this reminder's due time
+    func scheduleInAppTrigger(for item: Item) {
+        // Don't schedule for completed items
+        guard !item.isCompleted else { return }
+        // Cancel any existing timer for this item
+        cancelInAppTrigger(for: item)
+        let fireDate = item.timestamp
+        let interval = fireDate.timeIntervalSinceNow
+        if interval <= 0 {
+            // If already due or slightly past, show immediately
+            addNotificationSafely(item)
+            return
+        }
+        let info: [String: Any] = ["id": item.id, "item": item]
+        let timer = Timer(fireAt: fireDate, interval: 0, target: self, selector: #selector(inAppTriggerFired(_:)), userInfo: info, repeats: false)
+        RunLoop.main.add(timer, forMode: .common)
+        scheduledTimers[item.id] = timer
+    }
+
+    /// Cancel any scheduled in-app trigger for this reminder
+    func cancelInAppTrigger(for item: Item) {
+        if let t = scheduledTimers[item.id] {
+            t.invalidate()
+            scheduledTimers.removeValue(forKey: item.id)
+        }
+    }
+    
+    @objc private func inAppTriggerFired(_ timer: Timer) {
+        defer { timer.invalidate() }
+        var itemID: String? = nil
+        var itemToNotify: Item? = nil
+        if let info = timer.userInfo as? [String: Any] {
+            itemID = info["id"] as? String
+            if let item = info["item"] as? Item {
+                itemToNotify = item
             }
+        } else if let id = timer.userInfo as? String {
+            itemID = id
         }
-        
-        // Initial check
-        Task {
-            await checkForDueReminders()
+        if let id = itemID {
+            scheduledTimers.removeValue(forKey: id)
+        }
+        if itemToNotify == nil, let id = itemID {
+            itemToNotify = fetchItem(withID: id)
+        }
+        guard let item = itemToNotify else { return }
+        addNotificationSafely(item)
+    }
+
+    private func fetchItem(withID id: String) -> Item? {
+        guard let modelContext = modelContext else { return nil }
+        do {
+            let descriptor = FetchDescriptor<Item>(
+                predicate: #Predicate<Item> { it in it.id == id }
+            )
+            return try modelContext.fetch(descriptor).first
+        } catch {
+            print("Error fetching item by id \(id): \(error)")
+            return nil
         }
     }
     
-    private func checkForDueReminders() async {
+    private func catchUpPastDueReminders() {
         guard let modelContext = modelContext else { return }
-        
         let now = Date()
-        let fiveMinutesAgo = now.addingTimeInterval(-5 * 60) // 5 minutes ago
-        
+        let tenMinutesAgo = now.addingTimeInterval(-10 * 60)
         do {
             let descriptor = FetchDescriptor<Item>(
                 predicate: #Predicate<Item> { item in
-                    !item.isCompleted && 
-                    item.timestamp >= fiveMinutesAgo && 
-                    item.timestamp <= now
+                    !item.isCompleted && item.timestamp >= tenMinutesAgo && item.timestamp <= now
                 },
                 sortBy: [SortDescriptor(\.timestamp, order: .forward)]
             )
-            
             let dueItems = try modelContext.fetch(descriptor)
-            let newNotifications = dueItems.filter { item in
-                // Only show if it's not already in active notifications AND hasn't been shown before
-                !activeNotifications.contains { $0.id == item.id } && 
-                !shownNotificationIDs.contains(item.id)
+            for item in dueItems {
+                addNotificationSafely(item)
             }
-            
-            if !newNotifications.isEmpty {
-                print("DEBUG: Found \(newNotifications.count) new due reminders")
-                // Mark these notifications as shown
-                for item in newNotifications {
-                    print("DEBUG: Marking '\(item.title)' (ID: \(item.id)) as shown")
-                    shownNotificationIDs.insert(item.id)
-                }
-                
-                activeNotifications.append(contentsOf: newNotifications)
-                showingNotification = true
-            }
-            
+            // Periodically clean up old shown IDs
+            cleanupOldShownIDs()
         } catch {
-            print("Error fetching due reminders: \(error)")
+            print("Error fetching past-due reminders: \(error)")
         }
     }
     
@@ -83,6 +128,7 @@ class InAppNotificationManager: ObservableObject {
         
         withAnimation {
             item.isCompleted = true
+            cancelInAppTrigger(for: item)
             removeFromActiveNotifications(item)
             
             // Cancel all notifications for this reminder
@@ -90,9 +136,26 @@ class InAppNotificationManager: ObservableObject {
                 await NotificationManager.shared.handleReminderCompleted(item)
             }
             
-            // Create next occurrence if it's repeating
+            // Maintain a rolling window of future items if this is a repeating series
             if item.repeatFrequency != .none {
-                addNextOccurrence(for: item, modelContext: modelContext)
+                if let parentID = item.parentReminderID {
+                    // Add after the last item in the series to avoid duplicating an already-created “next”
+                    do {
+                        let descriptor = FetchDescriptor<Item>(
+                            predicate: #Predicate<Item> { it in it.parentReminderID == parentID },
+                            sortBy: [SortDescriptor(\.timestamp, order: .forward)]
+                        )
+                        if let seriesLast = try modelContext.fetch(descriptor).last {
+                            addNextOccurrence(for: seriesLast, modelContext: modelContext)
+                        }
+                    } catch {
+                        // If we can't load the series, fall back to adding after the completed item
+                        addNextOccurrence(for: item, modelContext: modelContext)
+                    }
+                } else {
+                    // No parent series recorded — generate next based on this item
+                    addNextOccurrence(for: item, modelContext: modelContext)
+                }
             }
             
             do {
@@ -125,6 +188,10 @@ class InAppNotificationManager: ObservableObject {
             modelContext.insert(snoozeReminder)
             removeFromActiveNotifications(item)
             
+            // Cancel original in-app trigger and schedule for snoozed reminder
+            cancelInAppTrigger(for: item)
+            scheduleInAppTrigger(for: snoozeReminder)
+            
             // Schedule system notification for snoozed reminder
             Task {
                 await NotificationManager.shared.scheduleNotification(for: snoozeReminder)
@@ -141,7 +208,7 @@ class InAppNotificationManager: ObservableObject {
     func dismissNotification(_ item: Item) {
         withAnimation {
             removeFromActiveNotifications(item)
-            // Keep it in shownNotificationIDs so it doesn't appear again
+            // Keep it in lastShownAt so it doesn't appear again if appropriate
         }
     }
     
@@ -149,7 +216,7 @@ class InAppNotificationManager: ObservableObject {
         withAnimation {
             activeNotifications.removeAll()
             showingNotification = false
-            // Keep all IDs in shownNotificationIDs so they don't appear again
+            // No changes needed for lastShownAt here
         }
     }
     
@@ -158,23 +225,18 @@ class InAppNotificationManager: ObservableObject {
         if activeNotifications.isEmpty {
             showingNotification = false
         }
-        // Note: We keep the item.id in shownNotificationIDs to prevent re-showing
+        // Note: We keep the lastShownAt entries to prevent re-showing unnecessarily
     }
     
     
     private func cleanupOldShownIDs() {
         guard let modelContext = modelContext else { return }
-        
-        // Remove IDs for completed or very old reminders to prevent memory buildup
         do {
             let descriptor = FetchDescriptor<Item>()
             let allItems = try modelContext.fetch(descriptor)
             let oneDayAgo = Date().addingTimeInterval(-24 * 60 * 60)
-            
-            // Keep only IDs that either:
-            // 1. Still exist in the database AND are not completed
-            // 2. Are for reminders that are less than 24 hours old
-            shownNotificationIDs = shownNotificationIDs.filter { id in
+            // Keep entries for items that still exist and are not completed and are not too old
+            lastShownAt = lastShownAt.filter { (id, _) in
                 if let item = allItems.first(where: { $0.id == id }) {
                     return !item.isCompleted && item.timestamp > oneDayAgo
                 }
@@ -192,26 +254,41 @@ class InAppNotificationManager: ObservableObject {
         }
     }
     
-    /// Safely add a notification, checking both active notifications and shown IDs
+    /// Safely add a notification, checking both active notifications and last shown timestamps
     func addNotificationSafely(_ item: Item) {
         print("DEBUG: Attempting to add notification for '\(item.title)' (ID: \(item.id))")
-        print("DEBUG: Already active: \(activeNotifications.contains(where: { $0.id == item.id }))")
-        print("DEBUG: Already shown: \(shownNotificationIDs.contains(item.id))")
-        
-        // Only add if not already active AND not already shown
-        if !activeNotifications.contains(where: { $0.id == item.id }) && 
-           !shownNotificationIDs.contains(item.id) {
-            print("DEBUG: Adding notification for '\(item.title)'")
-            shownNotificationIDs.insert(item.id)
+        let isActive = activeNotifications.contains(where: { $0.id == item.id })
+        let last = lastShownAt[item.id]
+        let now = Date()
+        let allowReshowAtDue = (last == nil) || (now >= item.timestamp && (last! < item.timestamp))
+        print("DEBUG: Already active: \(isActive), last shown: \(String(describing: last)), allowReshowAtDue: \(allowReshowAtDue)")
+        if !isActive && allowReshowAtDue {
+            lastShownAt[item.id] = now
             activeNotifications.append(item)
             showingNotification = true
         } else {
-            print("DEBUG: Skipping duplicate notification for '\(item.title)'")
+            print("DEBUG: Skipping duplicate/early notification for '\(item.title)'")
+        }
+    }
+    
+    private func scheduleAllUpcomingInAppTriggers() {
+        guard let modelContext = modelContext else { return }
+        do {
+            let now = Date()
+            let descriptor = FetchDescriptor<Item>(
+                predicate: #Predicate<Item> { it in !it.isCompleted && it.timestamp > now }
+            )
+            let items = try modelContext.fetch(descriptor)
+            for it in items {
+                scheduleInAppTrigger(for: it)
+            }
+        } catch {
+            print("Error scheduling upcoming in-app triggers: \(error)")
         }
     }
     
     deinit {
-        timer?.invalidate()
+        NotificationCenter.default.removeObserver(self, name: UIApplication.didBecomeActiveNotification, object: nil)
     }
 }
 

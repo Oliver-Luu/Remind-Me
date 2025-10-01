@@ -83,7 +83,7 @@ class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
         }
         
         // Still play sound and show badge
-        completionHandler([.sound, .badge])
+        completionHandler([.banner, .list, .sound, .badge])
     }
     
     // Handle notification actions
@@ -138,3 +138,4 @@ class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
         }
     }
 }
+

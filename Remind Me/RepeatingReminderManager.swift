@@ -9,6 +9,7 @@ import Foundation
 import SwiftData
 
 /// Creates repeating reminders based on the specified frequency and parameters
+@discardableResult
 func addRepeatingReminders(
     title: String,
     startDate: Date,
@@ -18,14 +19,16 @@ func addRepeatingReminders(
     modelContext: ModelContext,
     notificationIntervalMinutes: Int,
     notificationRepeatCount: Int
-) {
+) -> Item {
     // Create a unique ID for this set of repeating reminders
     let parentID = UUID().uuidString
     var remindersToSchedule: [Item] = []
     
+    let start = floorToMinute(startDate)
+    
     // Always create the initial reminder
     let initialReminder = Item(
-        timestamp: startDate,
+        timestamp: start,
         title: title,
         repeatFrequency: repeatFrequency,
         parentReminderID: repeatFrequency == .none ? nil : parentID,
@@ -36,19 +39,22 @@ func addRepeatingReminders(
     modelContext.insert(initialReminder)
     remindersToSchedule.append(initialReminder)
     
+    // Persist immediately so other contexts (e.g., in-app notifier) can see it
+    try? modelContext.save()
+    
     // If it's not repeating, we're done
-    guard repeatFrequency != .none else { 
+    if repeatFrequency == .none {
         Task {
             await NotificationManager.shared.scheduleNotifications(for: remindersToSchedule)
         }
-        return 
+        return initialReminder
     }
     
     // Create additional reminders based on the repeat frequency
     let calendar = Calendar.current
-    var currentDate = startDate
+    var currentDate = start
     
-    for _ in 1..<numberOfOccurrences {
+    for _ in 0..<numberOfOccurrences {
         currentDate = nextOccurrenceDate(from: currentDate, frequency: repeatFrequency, interval: repeatInterval, calendar: calendar)
         
         let reminder = Item(
@@ -64,10 +70,15 @@ func addRepeatingReminders(
         remindersToSchedule.append(reminder)
     }
     
+    // Persist all newly created reminders before scheduling
+    try? modelContext.save()
+    
     // Schedule notifications for all reminders
     Task {
         await NotificationManager.shared.scheduleNotifications(for: remindersToSchedule)
     }
+    
+    return initialReminder
 }
 
 /// Calculates the next occurrence date based on the repeat frequency
@@ -94,6 +105,18 @@ func addNextOccurrence(for item: Item, modelContext: ModelContext) {
     
     let calendar = Calendar.current
     let nextDate = nextOccurrenceDate(from: item.timestamp, frequency: item.repeatFrequency, interval: max(1, item.repeatInterval), calendar: calendar)
+    
+    // Prevent duplicates: if there’s already an item at nextDate in the same series, do nothing
+    if let parentID = item.parentReminderID {
+        let descriptor = FetchDescriptor<Item>(
+            predicate: #Predicate<Item> { it in
+                it.parentReminderID == parentID && it.timestamp == nextDate
+            }
+        )
+        if let existing = try? modelContext.fetch(descriptor), !existing.isEmpty {
+            return
+        }
+    }
     
     let nextReminder = Item(
         timestamp: nextDate,
@@ -156,3 +179,4 @@ func getRelatedReminders(for item: Item, modelContext: ModelContext) -> [Item] {
         return [item]
     }
 }
+

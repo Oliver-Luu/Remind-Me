@@ -7,20 +7,11 @@
 
 import SwiftUI
 import SwiftData
-import Combine
 
 struct ContentView: View {
-    @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var notificationManager: NotificationManager
-    @EnvironmentObject private var inAppNotificationManager: InAppNotificationManager
-    @Query private var items: [Item]
-    @State private var currentTime = Date()
-    @State private var isTicking = true
     @State private var isPresentingAddReminder = false
     @State private var showingNotificationAlert = false
-        
-    // Timer that fires every second
-    private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     var body: some View {
         NavigationStack {
@@ -28,13 +19,15 @@ struct ContentView: View {
                 Text("iRemindMe")
                     .font(.system(size: 56, weight: .bold, design: .monospaced))
                     .padding(.top, 46)
-                Text(formattedTime)
-                    .font(.system(size: 40, weight: .bold, design: .monospaced))
-                    .padding(.top, 4)
-                Text(formattedDate)
-                    .font(.system(size: 25, weight: .bold, design: .monospaced))
-                    .padding(.top, 4)
-                
+                TimelineView(.periodic(from: .now, by: 1)) { context in
+                    Text(formattedTime(context.date))
+                        .font(.system(size: 40, weight: .bold, design: .monospaced))
+                        .padding(.top, 4)
+                    Text(formattedDate(context.date))
+                        .font(.system(size: 25, weight: .bold, design: .monospaced))
+                        .padding(.top, 4)
+                }
+
                 // Notification status indicator
                 if notificationManager.authorizationStatus == .denied {
                     VStack(spacing: 4) {
@@ -46,7 +39,7 @@ struct ContentView: View {
                     }
                     .padding(.top, 8)
                 }
-                
+
                 Spacer()
 
                 VStack(spacing: 16) {
@@ -65,7 +58,6 @@ struct ContentView: View {
                     }
                     .buttonStyle(.borderedProminent)
                     .frame(minWidth: 240)
-                    
                 }
                 .font(.title2)
                 .controlSize(.large)
@@ -74,17 +66,11 @@ struct ContentView: View {
                 Spacer()
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-            // Update the state every time the timer fires
-            .onReceive(timer) { input in
-                if isTicking {
-                    currentTime = input
-                }
-            }
             .sheet(isPresented: $isPresentingAddReminder) {
                 NavigationStack {
                     AddReminderView()
                         .presentationDetents([.large])
-                    .presentationDragIndicator(.visible)    // show the little grab bar
+                        .presentationDragIndicator(.visible)    // show the little grab bar
                 }
             }
             .alert("Enable Notifications", isPresented: $showingNotificationAlert) {
@@ -103,28 +89,25 @@ struct ContentView: View {
         }
     }
 
-    // Computed property to format time that respects the user's 12/24‑hour preference
-    private var formattedTime: String {
+    private static let timeFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.locale = .autoupdatingCurrent
-        // Use a localized template so the hour cycle (12/24h) follows user settings while including seconds.
         formatter.setLocalizedDateFormatFromTemplate("j:mm:ss")
-        return formatter.string(from: currentTime)
-    }
+        return formatter
+    }()
 
-    // Computed property to format date
-    private var formattedDate: String {
+    private static let dateFormatter: DateFormatter = {
         let formatter = DateFormatter()
-        formatter.dateFormat = "MMMM dd" // e.g., September 24
-        return formatter.string(from: currentTime)
+        formatter.dateFormat = "MMMM dd"
+        return formatter
+    }()
+
+    private func formattedTime(_ date: Date) -> String {
+        return ContentView.timeFormatter.string(from: date)
     }
 
-    private func deleteItems(offsets: IndexSet) {
-        withAnimation {
-            for index in offsets {
-                modelContext.delete(items[index])
-            }
-        }
+    private func formattedDate(_ date: Date) -> String {
+        return ContentView.dateFormatter.string(from: date)
     }
 }
 

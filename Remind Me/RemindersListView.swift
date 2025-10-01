@@ -87,19 +87,33 @@ struct RemindersListView: View {
                                             Text(series.title)
                                                 .font(.headline)
 
-                                            HStack(spacing: 6) {
+                                            HStack(spacing: 8) {
                                                 if let next = series.nextUpcoming {
-                                                    Text(formatted(date: next.timestamp))
-                                                        .font(.subheadline)
-                                                        .foregroundStyle(.secondary)
+                                                    HStack(spacing: 4) {
+                                                        Image(systemName: "calendar.badge.clock")
+                                                        Text(conciseDateTime(next.timestamp))
+                                                    }
+                                                    .lineLimit(1)
+                                                    .truncationMode(.tail)
+                                                    .layoutPriority(1)
                                                 }
-                                                Text("• \(series.repeatFrequency.display(interval: series.items.first?.repeatInterval ?? 1))")
-                                                    .font(.caption)
-                                                    .foregroundStyle(.secondary)
-                                                Text("• \(series.totalCount) occurrences")
-                                                    .font(.caption)
-                                                    .foregroundStyle(.secondary)
+
+                                                HStack(spacing: 4) {
+                                                    Image(systemName: "repeat")
+                                                    Text(series.repeatFrequency.display(interval: series.items.first?.repeatInterval ?? 1))
+                                                }
+                                                .lineLimit(1)
+                                                .truncationMode(.tail)
+
+                                                HStack(spacing: 4) {
+                                                    Image(systemName: "number")
+                                                    Text("\(series.totalCount) occ.")
+                                                }
+                                                .lineLimit(1)
+                                                .truncationMode(.tail)
                                             }
+                                            .font(.caption2)
+                                            .foregroundStyle(.secondary)
                                         }
 
                                         Spacer()
@@ -246,6 +260,26 @@ struct RemindersListView: View {
         return df.string(from: date)
     }
 
+    private func conciseDateTime(_ date: Date) -> String {
+        let calendar = Calendar.current
+
+        let timeFormatter = DateFormatter()
+        timeFormatter.dateStyle = .none
+        timeFormatter.timeStyle = .short
+        let time = timeFormatter.string(from: date)
+
+        if calendar.isDateInToday(date) {
+            return "Today \(time)"
+        } else if calendar.isDateInTomorrow(date) {
+            return "Tomorrow \(time)"
+        } else {
+            let df = DateFormatter()
+            df.dateStyle = .medium
+            df.timeStyle = .short
+            return df.string(from: date)
+        }
+    }
+
     private func toggleCompletion(for item: Item) {
         withAnimation {
             item.isCompleted.toggle()
@@ -281,3 +315,4 @@ struct RemindersListView: View {
     }
     .modelContainer(for: Item.self, inMemory: true)
 }
+

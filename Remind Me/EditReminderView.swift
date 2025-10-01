@@ -4,6 +4,7 @@ import SwiftData
 struct EditReminderView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var inAppNotificationManager: InAppNotificationManager
 
     let item: Item
     @State private var date: Date
@@ -161,13 +162,14 @@ struct EditReminderView: View {
     
     private func saveChangesThisOnly() {
         Task {
+            let normalizedDate = floorToMinute(date)
             let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
             let wasOneTime = (item.parentReminderID == nil && item.repeatFrequency == .none)
             let willBeRepeating = (repeatFrequency != .none)
             
             if wasOneTime && repeatFrequency == .custom {
                 let parentID = UUID().uuidString
-                item.timestamp = date
+                item.timestamp = normalizedDate
                 item.title = trimmedTitle
                 item.repeatFrequency = .custom
                 item.repeatInterval = 1
@@ -180,7 +182,7 @@ struct EditReminderView: View {
                 if !item.isCompleted { toSchedule.append(item) }
 
                 let calendar = Calendar.current
-                let timeComponents = calendar.dateComponents([.hour, .minute, .second], from: date)
+                let timeComponents = calendar.dateComponents([.hour, .minute, .second], from: normalizedDate)
                 let sortedDates = customSelectedDates.sorted { lhs, rhs in
                     let l = calendar.date(from: lhs) ?? Date.distantPast
                     let r = calendar.date(from: rhs) ?? Date.distantPast
@@ -194,8 +196,9 @@ struct EditReminderView: View {
                     comps.second = timeComponents.second
                     if let scheduledDate = calendar.date(from: comps) {
                         if scheduledDate == item.timestamp { continue }
+                        let normalized = floorToMinute(scheduledDate)
                         let newItem = Item(
-                            timestamp: scheduledDate,
+                            timestamp: normalized,
                             title: trimmedTitle,
                             repeatFrequency: .custom,
                             parentReminderID: parentID,
@@ -209,13 +212,15 @@ struct EditReminderView: View {
                 }
 
                 try? modelContext.save()
+                // Schedule precise in-app triggers for newly created items
+                for it in toSchedule { inAppNotificationManager.scheduleInAppTrigger(for: it) }
                 await NotificationManager.shared.scheduleNotifications(for: toSchedule)
             } else if wasOneTime && willBeRepeating {
                 // Convert to a repeating series: assign a parent ID to this item and create future occurrences
                 let parentID = UUID().uuidString
 
                 // Update the current item to be the first in the series
-                item.timestamp = date
+                item.timestamp = normalizedDate
                 item.title = trimmedTitle
                 item.repeatFrequency = repeatFrequency
                 item.repeatInterval = repeatInterval
@@ -228,7 +233,7 @@ struct EditReminderView: View {
                 if !item.isCompleted { toSchedule.append(item) }
 
                 // Create future occurrences based on chosen count
-                var lastDate = date
+                var lastDate = normalizedDate
                 let calendar = Calendar.current
                 for _ in 0..<futureCount {
                     let nextDate: Date
@@ -245,8 +250,9 @@ struct EditReminderView: View {
                         nextDate = lastDate
                     }
 
+                    let normalizedNextDate = floorToMinute(nextDate)
                     let newItem = Item(
-                        timestamp: nextDate,
+                        timestamp: normalizedNextDate,
                         title: trimmedTitle,
                         repeatFrequency: repeatFrequency,
                         parentReminderID: parentID,
@@ -260,12 +266,13 @@ struct EditReminderView: View {
                 }
 
                 try? modelContext.save()
-
+                // Schedule precise in-app triggers for the first and all new items
+                for it in toSchedule { inAppNotificationManager.scheduleInAppTrigger(for: it) }
                 // Schedule notifications for all items in the new series
                 await NotificationManager.shared.scheduleNotifications(for: toSchedule)
             } else {
                 // Update the item without series conversion
-                item.timestamp = date
+                item.timestamp = normalizedDate
                 item.title = trimmedTitle
                 if item.parentReminderID == nil { item.repeatFrequency = repeatFrequency }
                 item.notificationIntervalMinutes = notificationIntervalMinutes
@@ -283,6 +290,7 @@ struct EditReminderView: View {
                 // If not completed, reschedule notifications
                 if !item.isCompleted {
                     await NotificationManager.shared.scheduleNotification(for: item)
+                    inAppNotificationManager.scheduleInAppTrigger(for: item)
                 }
 
                 try? modelContext.save()
@@ -302,14 +310,15 @@ struct EditReminderView: View {
             // Cancel notifications for all related reminders
             await NotificationManager.shared.cancelNotifications(for: relatedReminders)
             
-            // Calculate the time difference to apply to all reminders
-            let timeDifference = date.timeIntervalSince(item.timestamp)
+            let normalizedDate = floorToMinute(date)
+            let timeDifference = normalizedDate.timeIntervalSince(item.timestamp)
             let titleChange = title.trimmingCharacters(in: .whitespacesAndNewlines)
             
             // Update all related reminders
             for reminder in relatedReminders {
                 reminder.title = titleChange
-                reminder.timestamp = reminder.timestamp.addingTimeInterval(timeDifference)
+                let shifted = reminder.timestamp.addingTimeInterval(timeDifference)
+                reminder.timestamp = floorToMinute(shifted)
                 // reminder.repeatFrequency = repeatFrequency  // Removed as per instructions
                 reminder.repeatInterval = repeatInterval
                 reminder.notificationIntervalMinutes = notificationIntervalMinutes
@@ -323,6 +332,7 @@ struct EditReminderView: View {
                 // Reschedule if not completed
                 if !reminder.isCompleted {
                     await NotificationManager.shared.scheduleNotification(for: reminder)
+                    inAppNotificationManager.scheduleInAppTrigger(for: reminder)
                 }
             }
             

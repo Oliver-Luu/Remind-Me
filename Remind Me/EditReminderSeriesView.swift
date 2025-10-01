@@ -177,8 +177,8 @@ struct EditReminderSeriesView: View {
             let existingDays = Set(items.map { dayOnly(cal.dateComponents([.year, .month, .day], from: $0.timestamp)) })
             let selectedDays = Set(customSelectedDates.map { dayOnly($0) })
             let sameDates = existingDays == selectedDays
-            let firstTime = cal.dateComponents([.hour, .minute, .second], from: first.timestamp)
-            let selectedTime = cal.dateComponents([.hour, .minute, .second], from: startDate)
+            let firstTime = cal.dateComponents([.hour, .minute, .second], from: floorToMinute(first.timestamp))
+            let selectedTime = cal.dateComponents([.hour, .minute, .second], from: floorToMinute(startDate))
             let sameTime = firstTime == selectedTime
             let sameTitle = first.title == title
             let sameNotifs = first.notificationIntervalMinutes == notificationIntervalMinutes && first.notificationRepeatCount == notificationRepeatCount
@@ -224,6 +224,8 @@ struct EditReminderSeriesView: View {
         // Load current items and ensure we have something to edit
         guard !items.isEmpty else { return }
 
+        let normalizedStart = floorToMinute(startDate)
+
         // Cancel notifications for all current items first
         Task { await NotificationManager.shared.cancelNotifications(for: items) }
 
@@ -255,7 +257,7 @@ struct EditReminderSeriesView: View {
             for it in futureItems { modelContext.delete(it) }
 
             // Recreate future items exactly matching the selected day keys
-            let time = cal.dateComponents([.hour, .minute, .second], from: startDate)
+            let time = cal.dateComponents([.hour, .minute], from: normalizedStart)
             let newFutureKeys = selectedKeys.filter { $0 >= cal.startOfDay(for: now) }.sorted()
 
             var toSchedule: [Item] = []
@@ -263,10 +265,11 @@ struct EditReminderSeriesView: View {
                 var comps = cal.dateComponents([.year, .month, .day], from: key)
                 comps.hour = time.hour
                 comps.minute = time.minute
-                comps.second = time.second
+                comps.second = 0
                 if let scheduled = cal.date(from: comps) {
+                    let normalized = floorToMinute(scheduled, calendar: cal)
                     let newItem = Item(
-                        timestamp: scheduled,
+                        timestamp: normalized,
                         title: title.trimmingCharacters(in: .whitespacesAndNewlines),
                         repeatFrequency: .custom,
                         parentReminderID: parentID,
@@ -300,7 +303,7 @@ struct EditReminderSeriesView: View {
             let toAdd = desiredTotal - sortedItems.count
             for _ in 0..<toAdd {
                 let newItem = Item(
-                    timestamp: Date(), // placeholder, will set below
+                    timestamp: normalizedStart, // placeholder, will set below
                     title: title.trimmingCharacters(in: .whitespacesAndNewlines),
                     repeatFrequency: repeatFrequency,
                     parentReminderID: parentID,
@@ -324,7 +327,7 @@ struct EditReminderSeriesView: View {
 
         // Recompute timestamps for entire series using new start date and interval
         let calendar = Calendar.current
-        var currentDate = startDate
+        var currentDate = normalizedStart
         for index in 0..<sortedItems.count {
             let item = sortedItems[index]
             item.title = title.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -332,7 +335,9 @@ struct EditReminderSeriesView: View {
             item.repeatInterval = repeatInterval
             item.notificationIntervalMinutes = notificationIntervalMinutes
             item.notificationRepeatCount = notificationRepeatCount
-            item.timestamp = currentDate
+
+            let normalized = floorToMinute(currentDate)
+            item.timestamp = normalized
 
             // Compute next date for next iteration
             if index < sortedItems.count - 1 {

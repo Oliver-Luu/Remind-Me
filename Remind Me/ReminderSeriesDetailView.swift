@@ -64,27 +64,34 @@ struct ReminderSeriesDetailView: View {
 
     private func row(for item: Item) -> some View {
         HStack(spacing: 12) {
-            Image(systemName: item.isCompleted ? "checkmark.circle.fill" : "bell")
-                .foregroundStyle(item.isCompleted ? .green : .blue)
-                .onTapGesture {
-                    toggleCompletion(for: item)
-                }
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(item.title)
-                    .font(.headline)
-                    .strikethrough(item.isCompleted)
-
-                Text(formatted(date: item.timestamp))
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+            // Leading icon: toggle completion explicitly
+            Button {
+                toggleCompletion(for: item)
+            } label: {
+                Image(systemName: item.isCompleted ? "checkmark.circle.fill" : "bell")
+                    .foregroundStyle(item.isCompleted ? .green : .blue)
             }
+            .buttonStyle(.plain)
+
+            // Tapping the reminder content opens the edit page explicitly
+            Button {
+                selectedItem = item
+            } label: {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(item.title)
+                        .font(.headline)
+                        .strikethrough(item.isCompleted)
+
+                    Text(formatted(date: item.timestamp))
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
         }
         .padding(.vertical, 4)
-        .contentShape(Rectangle())
-        .onTapGesture {
-            selectedItem = item
-        }
         .contextMenu {
             Button("Edit") {
                 selectedItem = item
