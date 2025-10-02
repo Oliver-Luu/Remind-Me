@@ -174,17 +174,11 @@ class NotificationManager: ObservableObject {
             options: []
         )
         
-        let stopAction = UNNotificationAction(
-            identifier: "STOP_PERSISTENT_ACTION",
-            title: "Stop Reminders",
-            options: [.destructive]
-        )
-        
         let category = UNNotificationCategory(
             identifier: "REMINDER_CATEGORY",
-            actions: isPersistent ? [completeAction, snoozeAction, stopAction] : [completeAction, snoozeAction],
+            actions: [completeAction, snoozeAction],
             intentIdentifiers: [],
-            options: [.customDismissAction]
+            options: []
         )
         
         UNUserNotificationCenter.current().setNotificationCategories([category])
@@ -262,10 +256,6 @@ class NotificationManager: ObservableObject {
             // Cancel all notifications for this reminder before snoozing
             await cancelAllNotificationsForReminder(reminderID: reminderID)
             await snoozeReminder(reminderID: reminderID, modelContext: modelContext)
-        case "STOP_PERSISTENT_ACTION":
-            // Stop persistent notifications without completing the reminder
-            cancelPersistentNotifications(for: reminderID)
-            print("Stopped persistent notifications for reminder: \(reminderID)")
         case UNNotificationDismissActionIdentifier:
             // User dismissed the notification - don't stop persistent notifications
             // They will continue to receive follow-ups

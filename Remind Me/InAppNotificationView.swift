@@ -142,21 +142,6 @@ struct InAppNotificationView: View {
                             }
                         }
                     }
-                    
-                    // Close button
-                    Button {
-                        dismissCurrentNotification()
-                    } label: {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(.secondary)
-                            .frame(width: 28, height: 28)
-                            .background {
-                                Circle()
-                                    .fill(.regularMaterial)
-                                    .stroke(.secondary.opacity(0.3), lineWidth: 1)
-                            }
-                    }
                 }
                 .padding(24)
                 .background {
@@ -225,12 +210,13 @@ struct InAppNotificationView: View {
     }
     
     private var modernSnoozeMenu: some View {
-        Menu {
-            Button("5 minutes") { snoozeCurrentReminder(minutes: 5) }
-            Button("10 minutes") { snoozeCurrentReminder(minutes: 10) }
-            Button("15 minutes") { snoozeCurrentReminder(minutes: 15) }
-            Button("30 minutes") { snoozeCurrentReminder(minutes: 30) }
-            Button("1 hour") { snoozeCurrentReminder(minutes: 60) }
+        let options = [60, 30, 15, 10, 5] // minutes, descending
+        return Menu {
+            ForEach(options, id: \.self) { minutes in
+                Button(minutes == 60 ? "1 hour" : "\(minutes) minutes") {
+                    snoozeCurrentReminder(minutes: minutes)
+                }
+            }
         } label: {
             HStack(spacing: 8) {
                 Image(systemName: "clock.arrow.circlepath")
@@ -371,27 +357,6 @@ struct InAppNotificationView: View {
         }
     }
     
-    private func dismissCurrentNotification() {
-        guard currentIndex < inAppNotificationManager.activeNotifications.count else { return }
-        let reminder = inAppNotificationManager.activeNotifications[currentIndex]
-        
-        // Animate the card sliding left and disappearing
-        withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
-            disappearDirection = .slideLeft
-            isDisappearing = true
-        }
-        
-        // Dismiss the notification immediately to ensure state is updated
-        inAppNotificationManager.dismissNotification(reminder)
-        
-        // Reset animation state and adjust index after a short delay
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            isDisappearing = false
-            disappearDirection = .none
-            adjustCurrentIndex()
-        }
-    }
-    
     private func showNextNotification() {
         if currentIndex < inAppNotificationManager.activeNotifications.count - 1 {
             currentIndex += 1
@@ -434,3 +399,4 @@ struct InAppNotificationView: View {
         InAppNotificationView(inAppNotificationManager: manager)
     }
 }
+
