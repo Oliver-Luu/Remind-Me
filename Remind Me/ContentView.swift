@@ -102,7 +102,7 @@ struct HeaderSection: View {
     var body: some View {
         VStack(spacing: 8) {
             Image(systemName: "bell.circle.fill")
-                .font(.system(size: 60, weight: .light))
+                .font(.system(size: 100, weight: .light))
                 .foregroundStyle(
                     LinearGradient(
                         colors: [.blue, .purple],
@@ -123,7 +123,7 @@ struct HeaderSection: View {
                     .blendMode(.screen)
                     .mask(
                         Image(systemName: "bell.circle.fill")
-                            .font(.system(size: 60, weight: .light))
+                            .font(.system(size: 100, weight: .light))
                     )
                 )
             
@@ -131,7 +131,7 @@ struct HeaderSection: View {
                 .font(.system(size: 42, weight: .bold, design: .default))
                 .foregroundStyle(
                     LinearGradient(
-                        colors: [.primary, .secondary],
+                        colors: [.blue, .purple],
                         startPoint: .leading,
                         endPoint: .trailing
                     )
