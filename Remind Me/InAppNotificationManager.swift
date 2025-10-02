@@ -126,6 +126,8 @@ class InAppNotificationManager: ObservableObject {
             cancelInAppTrigger(for: item)
             removeFromActiveNotifications(item)
             
+            print("DEBUG: Marking reminder '\(item.title)' as completed (ID: \(item.id))")
+            
             // Cancel all notifications for this reminder
             Task {
                 await NotificationManager.shared.handleReminderCompleted(item)
@@ -155,6 +157,7 @@ class InAppNotificationManager: ObservableObject {
             
             do {
                 try modelContext.save()
+                print("DEBUG: Successfully saved completed reminder to context")
             } catch {
                 print("Error saving completed reminder: \(error)")
             }
@@ -163,7 +166,7 @@ class InAppNotificationManager: ObservableObject {
     
     func snoozeReminder(_ item: Item, minutes: Int = 10) {
         guard let modelContext = modelContext else { return }
-        
+
         withAnimation {
             // Cancel notifications for the original reminder
             Task {
@@ -171,31 +174,38 @@ class InAppNotificationManager: ObservableObject {
             }
             
             let snoozeDate = Date().addingTimeInterval(TimeInterval(minutes * 60))
+            let isRepeating = (item.parentReminderID != nil)
+            
             let snoozeReminder = Item(
                 timestamp: snoozeDate,
                 title: item.title + " (Snoozed)",
-                repeatFrequency: .none,
-                parentReminderID: nil,
+                repeatFrequency: isRepeating ? item.repeatFrequency : .none,
+                parentReminderID: isRepeating ? item.parentReminderID : nil,
                 notificationIntervalMinutes: item.notificationIntervalMinutes,
-                notificationRepeatCount: item.notificationRepeatCount
+                notificationRepeatCount: item.notificationRepeatCount,
+                repeatInterval: isRepeating ? item.repeatInterval : 1
             )
             
+            // Insert the new snoozed reminder
             modelContext.insert(snoozeReminder)
+            
+            // Remove the original from any active UI state and cancel its in-app trigger
             removeFromActiveNotifications(item)
-            
-            // Cancel original in-app trigger and schedule for snoozed reminder
             cancelInAppTrigger(for: item)
-            scheduleInAppTrigger(for: snoozeReminder)
             
-            // Schedule system notification for snoozed reminder
+            // Schedule in-app and system notifications for the snoozed reminder
+            scheduleInAppTrigger(for: snoozeReminder)
             Task {
                 await NotificationManager.shared.scheduleNotification(for: snoozeReminder)
             }
             
+            // Delete the original reminder since it has been snoozed and replaced
+            modelContext.delete(item)
+            
             do {
                 try modelContext.save()
             } catch {
-                print("Error saving snoozed reminder: \(error)")
+                print("Error saving snoozed reminder changes: \(error)")
             }
         }
     }

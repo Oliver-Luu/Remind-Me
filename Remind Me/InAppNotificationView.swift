@@ -10,124 +10,221 @@ import SwiftUI
 struct InAppNotificationView: View {
     @ObservedObject var inAppNotificationManager: InAppNotificationManager
     @State private var currentIndex = 0
+    @State private var animateGlow = false
+    @State private var cardScale = 0.9
+    @State private var isDisappearing = false
+    @State private var disappearDirection: DisappearDirection = .none
+    
+    enum DisappearDirection {
+        case none
+        case slideUp
+        case slideRight
+        case slideLeft
+    }
     
     var body: some View {
         if inAppNotificationManager.showingNotification && !inAppNotificationManager.activeNotifications.isEmpty {
             VStack(spacing: 0) {
                 Spacer()
                 
-                VStack(spacing: 16) {
-                    // Header
-                    HStack {
-                        Image(systemName: "bell.fill")
-                            .foregroundColor(.blue)
-                            .font(.title2)
-                        
-                        Text("Reminder")
-                            .font(.headline)
-                            .foregroundColor(.primary)
-                        
-                        Spacer()
-                        
-                        if inAppNotificationManager.activeNotifications.count > 1 {
-                            Text("\(currentIndex + 1) of \(inAppNotificationManager.activeNotifications.count)")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+                VStack(spacing: 20) {
+                    // Modern header with gradient icon
+                    VStack(spacing: 12) {
+                        ZStack {
+                            // Glowing background
+                            Circle()
+                                .fill(
+                                    RadialGradient(
+                                        colors: [.blue.opacity(0.3), .purple.opacity(0.1), .clear],
+                                        center: .center,
+                                        startRadius: 5,
+                                        endRadius: 30
+                                    )
+                                )
+                                .frame(width: 60, height: 60)
+                                .scaleEffect(animateGlow ? 1.2 : 1.0)
+                                .opacity(animateGlow ? 0.7 : 0.4)
+                                .animation(
+                                    .easeInOut(duration: 2)
+                                    .repeatForever(autoreverses: true),
+                                    value: animateGlow
+                                )
+                            
+                            // Bell icon
+                            Image(systemName: "bell.fill")
+                                .font(.system(size: 24, weight: .medium))
+                                .foregroundStyle(
+                                    LinearGradient(
+                                        colors: [.blue, .purple],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
                         }
                         
-                        Button("✕") {
-                            dismissCurrentNotification()
+                        VStack(spacing: 4) {
+                            Text("Reminder")
+                                .font(.system(size: 18, weight: .bold, design: .rounded))
+                                .foregroundColor(.primary)
+                            
+                            if inAppNotificationManager.activeNotifications.count > 1 {
+                                Text("\(currentIndex + 1) of \(inAppNotificationManager.activeNotifications.count)")
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundColor(.secondary)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 2)
+                                    .background {
+                                        Capsule()
+                                            .fill(.secondary.opacity(0.1))
+                                    }
+                            }
                         }
-                        .font(.title3)
-                        .foregroundColor(.secondary)
                     }
                     
-                    // Current reminder content
+                    // Current reminder content with glass effect
                     if currentIndex < inAppNotificationManager.activeNotifications.count {
                         let currentReminder = inAppNotificationManager.activeNotifications[currentIndex]
                         
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text(currentReminder.title)
-                                .font(.title3)
-                                .fontWeight(.semibold)
-                                .multilineTextAlignment(.leading)
-                            
-                            Text("Due: \(formattedDateTime(currentReminder.timestamp))")
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                            
-                            if currentReminder.repeatFrequency != .none {
-                                HStack {
-                                    Image(systemName: "repeat")
-                                        .font(.caption)
-                                    Text(currentReminder.repeatFrequency.displayName)
-                                        .font(.caption)
-                                }
-                                .foregroundColor(.secondary)
-                            }
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        
-                        // Action buttons
-                        ViewThatFits(in: .horizontal) {
-                            HStack(spacing: 12) {
-                                completeButton
-                                snoozeMenu
-                                Spacer()
-                                if inAppNotificationManager.activeNotifications.count > 1 {
-                                    nextButton
-                                    dismissAllButton
+                        VStack(spacing: 16) {
+                            // Reminder details
+                            VStack(alignment: .center, spacing: 12) {
+                                Text(currentReminder.title)
+                                    .font(.system(size: 20, weight: .semibold, design: .rounded))
+                                    .foregroundColor(.primary)
+                                    .multilineTextAlignment(.center)
+                                    .lineLimit(3)
+                                
+                                VStack(spacing: 8) {
+                                    Label {
+                                        Text("Due: \(formattedDateTime(currentReminder.timestamp))")
+                                            .font(.system(size: 14, weight: .medium))
+                                            .foregroundColor(.secondary)
+                                    } icon: {
+                                        Image(systemName: "clock")
+                                            .foregroundColor(.blue)
+                                    }
+                                    
+                                    if currentReminder.repeatFrequency != .none {
+                                        Label {
+                                            Text(currentReminder.repeatFrequency.displayName)
+                                                .font(.system(size: 14, weight: .medium))
+                                                .foregroundColor(.secondary)
+                                        } icon: {
+                                            Image(systemName: "repeat")
+                                                .foregroundColor(.purple)
+                                        }
+                                    }
                                 }
                             }
+                            .frame(maxWidth: .infinity)
+                            .padding(16)
+                            .background {
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(.regularMaterial)
+                                    .stroke(.secondary.opacity(0.2), lineWidth: 1)
+                            }
+                            
+                            // Modern action buttons
                             VStack(spacing: 12) {
+                                // Primary actions
                                 HStack(spacing: 12) {
-                                    completeButton
-                                    Spacer()
-                                    snoozeMenu
+                                    modernCompleteButton
+                                    modernSnoozeMenu
                                 }
-                                .frame(maxWidth: .infinity)
-
+                                
+                                // Secondary actions (if multiple notifications)
                                 if inAppNotificationManager.activeNotifications.count > 1 {
                                     HStack(spacing: 12) {
-                                        nextButton
-                                        Spacer()
-                                        dismissAllButton
+                                        modernNextButton
+                                        modernCompleteAllButton
                                     }
-                                    .frame(maxWidth: .infinity)
                                 }
                             }
                         }
-                        .font(.subheadline)
+                    }
+                    
+                    // Close button
+                    Button {
+                        dismissCurrentNotification()
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.secondary)
+                            .frame(width: 28, height: 28)
+                            .background {
+                                Circle()
+                                    .fill(.regularMaterial)
+                                    .stroke(.secondary.opacity(0.3), lineWidth: 1)
+                            }
                     }
                 }
-                .padding(20)
-                .background(
-                    RoundedRectangle(cornerRadius: 16)
-                        .fill(.regularMaterial)
-                        .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 5)
+                .padding(24)
+                .background {
+                    RoundedRectangle(cornerRadius: 24)
+                        .fill(.ultraThinMaterial)
+                        .shadow(color: .black.opacity(0.2), radius: 20, x: 0, y: 10)
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 24)
+                                .stroke(.white.opacity(0.2), lineWidth: 1)
+                        }
+                }
+                .padding(.horizontal, 20)
+                .scaleEffect(isDisappearing ? 0.8 : cardScale)
+                .offset(
+                    x: isDisappearing ? (disappearDirection == .slideRight ? 400 : (disappearDirection == .slideLeft ? -400 : 0)) : 0,
+                    y: isDisappearing ? (disappearDirection == .slideUp ? -200 : 0) : 0
                 )
-                .padding(.horizontal, 16)
-                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .opacity(isDisappearing ? 0 : 1)
+                .onAppear {
+                    withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
+                        cardScale = 1.0
+                    }
+                    animateGlow = true
+                }
+                .transition(
+                    .asymmetric(
+                        insertion: .move(edge: .bottom).combined(with: .opacity).combined(with: .scale(scale: 0.8)),
+                        removal: .opacity.combined(with: .scale(scale: 0.8))
+                    )
+                )
                 
                 Spacer()
-                    .frame(height: 100) // Space from bottom
+                    .frame(height: 120)
             }
-            .animation(.easeInOut(duration: 0.3), value: inAppNotificationManager.showingNotification)
-            .animation(.easeInOut(duration: 0.2), value: currentIndex)
+            .animation(.spring(response: 0.5, dampingFraction: 0.8), value: inAppNotificationManager.showingNotification)
+            .animation(.easeInOut(duration: 0.3), value: currentIndex)
         }
     }
     
-    private var completeButton: some View {
-        Button(action: { completeCurrentReminder() }) {
-            Label("Complete", systemImage: "checkmark.circle")
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
+    // MARK: - Modern Button Components
+    
+    private var modernCompleteButton: some View {
+        Button {
+            completeCurrentReminder()
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 16, weight: .medium))
+                Text("Complete")
+                    .font(.system(size: 14, weight: .semibold))
+            }
+            .foregroundColor(.white)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 12)
+            .background {
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(
+                        LinearGradient(
+                            colors: [.green, .mint],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+            }
         }
-        .buttonStyle(.borderedProminent)
-        .tint(.green)
     }
-
-    private var snoozeMenu: some View {
+    
+    private var modernSnoozeMenu: some View {
         Menu {
             Button("5 minutes") { snoozeCurrentReminder(minutes: 5) }
             Button("10 minutes") { snoozeCurrentReminder(minutes: 10) }
@@ -135,31 +232,94 @@ struct InAppNotificationView: View {
             Button("30 minutes") { snoozeCurrentReminder(minutes: 30) }
             Button("1 hour") { snoozeCurrentReminder(minutes: 60) }
         } label: {
-            Label("Snooze", systemImage: "zzz")
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
+            HStack(spacing: 8) {
+                Image(systemName: "clock.arrow.circlepath")
+                    .font(.system(size: 16, weight: .medium))
+                Text("Snooze")
+                    .font(.system(size: 14, weight: .semibold))
+            }
+            .foregroundColor(.white)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 12)
+            .background {
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(
+                        LinearGradient(
+                            colors: [.orange, .yellow],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+            }
         }
-        .buttonStyle(.bordered)
-        .tint(.orange)
     }
-
-    private var nextButton: some View {
-        Button(action: { showNextNotification() }) {
-            Label("Next", systemImage: "chevron.right")
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
+    
+    private var modernNextButton: some View {
+        Button {
+            showNextNotification()
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 16, weight: .medium))
+                Text("Next")
+                    .font(.system(size: 14, weight: .semibold))
+            }
+            .foregroundColor(.primary)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 12)
+            .background {
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(.regularMaterial)
+                    .stroke(.secondary.opacity(0.3), lineWidth: 1)
+            }
         }
-        .buttonStyle(.bordered)
     }
-
-    private var dismissAllButton: some View {
-        Button(action: { inAppNotificationManager.dismissAllNotifications() }) {
-            Label("Dismiss All", systemImage: "xmark.circle")
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
+    
+    private var modernCompleteAllButton: some View {
+        Button {
+            completeAllNotifications()
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "checkmark.circle")
+                    .font(.system(size: 16, weight: .medium))
+                Text("Complete All")
+                    .font(.system(size: 14, weight: .semibold))
+            }
+            .foregroundColor(.white)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 12)
+            .background {
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(
+                        LinearGradient(
+                            colors: [.green, .mint],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+            }
         }
-        .buttonStyle(.bordered)
-        .tint(.red)
+    }
+    
+    // MARK: - Helper Methods
+
+    private func completeAllNotifications() {
+        // Complete all active reminders using the manager
+        let toComplete = inAppNotificationManager.activeNotifications
+        guard !toComplete.isEmpty else { return }
+        // Animate disappearance
+        withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+            isDisappearing = true
+            disappearDirection = .slideUp
+        }
+        for reminder in toComplete {
+            inAppNotificationManager.completeReminder(reminder)
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+            isDisappearing = false
+            disappearDirection = .none
+            currentIndex = 0
+        }
     }
 
     private func formattedDateTime(_ date: Date) -> String {
@@ -172,22 +332,64 @@ struct InAppNotificationView: View {
     private func completeCurrentReminder() {
         guard currentIndex < inAppNotificationManager.activeNotifications.count else { return }
         let reminder = inAppNotificationManager.activeNotifications[currentIndex]
+        
+        // Animate the card sliding up and disappearing
+        withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+            disappearDirection = .slideUp
+            isDisappearing = true
+        }
+        
+        // Complete the reminder immediately to ensure state is updated
         inAppNotificationManager.completeReminder(reminder)
-        adjustCurrentIndex()
+        
+        // Reset animation state and adjust index after a short delay
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            isDisappearing = false
+            disappearDirection = .none
+            adjustCurrentIndex()
+        }
     }
     
     private func snoozeCurrentReminder(minutes: Int) {
         guard currentIndex < inAppNotificationManager.activeNotifications.count else { return }
         let reminder = inAppNotificationManager.activeNotifications[currentIndex]
+        
+        // Animate the card sliding right and disappearing
+        withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+            disappearDirection = .slideRight
+            isDisappearing = true
+        }
+        
+        // Snooze the reminder immediately to ensure state is updated
         inAppNotificationManager.snoozeReminder(reminder, minutes: minutes)
-        adjustCurrentIndex()
+        
+        // Reset animation state and adjust index after a short delay
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            isDisappearing = false
+            disappearDirection = .none
+            adjustCurrentIndex()
+        }
     }
     
     private func dismissCurrentNotification() {
         guard currentIndex < inAppNotificationManager.activeNotifications.count else { return }
         let reminder = inAppNotificationManager.activeNotifications[currentIndex]
+        
+        // Animate the card sliding left and disappearing
+        withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+            disappearDirection = .slideLeft
+            isDisappearing = true
+        }
+        
+        // Dismiss the notification immediately to ensure state is updated
         inAppNotificationManager.dismissNotification(reminder)
-        adjustCurrentIndex()
+        
+        // Reset animation state and adjust index after a short delay
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            isDisappearing = false
+            disappearDirection = .none
+            adjustCurrentIndex()
+        }
     }
     
     private func showNextNotification() {
@@ -232,4 +434,3 @@ struct InAppNotificationView: View {
         InAppNotificationView(inAppNotificationManager: manager)
     }
 }
-

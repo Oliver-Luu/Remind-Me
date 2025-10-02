@@ -4,6 +4,7 @@ import SwiftData
 struct EditReminderSeriesView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
 
     let parentID: String
 
@@ -20,81 +21,190 @@ struct EditReminderSeriesView: View {
     @State private var customSelectedDates: Set<DateComponents> = []
     @State private var selectionModified = false
     @State private var didInitializeCustomDates = false
+    @State private var animateGradient = false
 
     @State private var showRepeatDialog = false
     @State private var showFollowupDialog = false
 
+    @State private var isDeletingSeries = false
+    @State private var showDeleteSeriesError = false
+    @State private var deleteSeriesErrorMessage = ""
+
     var body: some View {
-        Form {
-            Section("Series Details") {
-                TextField("Title", text: $title)
-                if repeatFrequency == .custom {
-                    DatePicker("Time for all dates", selection: $startDate, displayedComponents: [.hourAndMinute])
-                    Text("This time will apply to all selected dates.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                } else {
-                    DatePicker("Series start date", selection: $startDate, displayedComponents: [.date, .hourAndMinute])
-                }
-            }
-
-            Section("Repeat Options") {
-                HStack {
-                    Text("Repeat")
-                    Spacer()
-                    Text(repeatFrequency.displayName)
-                        .foregroundStyle(.secondary)
-                }
-                .contentShape(Rectangle())
-                .onTapGesture { showRepeatDialog = true }
-
-                if repeatFrequency == .custom {
-                    Button {
-                        showCustomDatePicker = true
-                    } label: {
-                        Label("Choose dates", systemImage: "calendar")
+        GeometryReader { geometry in
+            ZStack {
+                // Dynamic animated background
+                RadialGradient(
+                    gradient: Gradient(colors: [
+                        Color.indigo.opacity(0.2),
+                        Color.purple.opacity(0.15),
+                        Color.clear
+                    ]),
+                    center: animateGradient ? .bottomLeading : .topTrailing,
+                    startRadius: 30,
+                    endRadius: 300
+                )
+                .ignoresSafeArea()
+                .onAppear {
+                    withAnimation(
+                        .easeInOut(duration: 8)
+                        .repeatForever(autoreverses: true)
+                    ) {
+                        animateGradient.toggle()
                     }
-                    if !customSelectedDates.isEmpty {
-                        Text("Selected: \(customSelectedDates.count) date\(customSelectedDates.count == 1 ? "" : "s")")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    } else {
-                        Text("No dates selected yet")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                }
+                
+                ScrollView {
+                    VStack(spacing: 24) {
+                        // Header Section
+                        VStack(spacing: 8) {
+                            Image(systemName: "repeat.circle.fill")
+                                .font(.system(size: 40, weight: .light))
+                                .foregroundStyle(
+                                    LinearGradient(
+                                        colors: [.indigo, .purple],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+                            
+                            Text("Edit Series")
+                                .font(.system(size: 24, weight: .bold, design: .rounded))
+                                .foregroundColor(.primary)
+                        }
+                        .padding(.top, 8)
+                        
+                        // Form sections with glass effect
+                        VStack(spacing: 20) {
+                            // Series Details Section
+                            ModernFormSection(title: "Series Details") {
+                                VStack(spacing: 16) {
+                                    ModernTextField(title: "Title", text: $title)
+                                    
+                                    if repeatFrequency == .custom {
+                                        ModernDatePicker(
+                                            title: "Time for all dates",
+                                            selection: $startDate,
+                                            displayedComponents: [.hourAndMinute]
+                                        )
+                                        
+                                        ModernStatusRow(
+                                            icon: "info.circle",
+                                            iconColor: .blue,
+                                            text: "This time will apply to all selected dates"
+                                        )
+                                    } else {
+                                        ModernDatePicker(
+                                            title: "Series start date",
+                                            selection: $startDate,
+                                            displayedComponents: [.date, .hourAndMinute]
+                                        )
+                                    }
+                                }
+                            }
+
+                            // Repeat Options Section
+                            ModernFormSection(title: "Repeat Options") {
+                                VStack(spacing: 16) {
+                                    ModernSelectionRow(
+                                        title: "Repeat",
+                                        value: repeatFrequency.displayName,
+                                        action: { showRepeatDialog = true }
+                                    )
+
+                                    if repeatFrequency == .custom {
+                                        ModernActionRow(
+                                            title: "Choose dates",
+                                            icon: "calendar",
+                                            action: { showCustomDatePicker = true }
+                                        )
+                                        
+                                        ModernStatusRow(
+                                            icon: customSelectedDates.isEmpty ? "exclamationmark.circle" : "checkmark.circle.fill",
+                                            iconColor: customSelectedDates.isEmpty ? .orange : .green,
+                                            text: customSelectedDates.isEmpty ?
+                                                "No dates selected yet" :
+                                                "Selected \(customSelectedDates.count) date\(customSelectedDates.count == 1 ? "" : "s")"
+                                        )
+                                    } else {
+                                        ModernStepper(
+                                            title: "Interval",
+                                            value: $repeatInterval,
+                                            range: 1...52,
+                                            suffix: repeatFrequency.unitName(for: repeatInterval)
+                                        )
+                                        
+                                        ModernStepper(
+                                            title: "Future reminders",
+                                            value: $futureCount,
+                                            range: 0...200,
+                                            suffix: "reminder\(futureCount == 1 ? "" : "s")"
+                                        )
+                                        
+                                        ModernStatusRow(
+                                            icon: "info.circle",
+                                            iconColor: .blue,
+                                            text: "Series must be repeating. To stop repeating, delete future occurrences."
+                                        )
+                                    }
+                                }
+                            }
+
+                            // Notification Options Section
+                            ModernFormSection(title: "Notification Options") {
+                                VStack(spacing: 16) {
+                                    ModernSelectionRow(
+                                        title: "Follow-up interval",
+                                        value: "\(notificationIntervalMinutes) min",
+                                        action: { showFollowupDialog = true }
+                                    )
+
+                                    ModernStepper(
+                                        title: "Follow-up count",
+                                        value: $notificationRepeatCount,
+                                        range: 0...30,
+                                        suffix: "follow-up\(notificationRepeatCount == 1 ? "" : "s")"
+                                    )
+                                }
+                            }
+                        }
+                        .padding(.bottom, 40)
                     }
-                } else {
-                    Stepper("Every " + "\(repeatInterval)" + " " + "\(repeatFrequency.unitName(for: repeatInterval))", value: $repeatInterval, in: 1...52)
-                    Stepper("Create \(futureCount) future reminders", value: $futureCount, in: 0...200)
-                    Text("Series must be repeating. To stop repeating, delete future occurrences.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    .padding(.horizontal, 20)
                 }
-            }
-
-            Section("Notification Options") {
-                HStack {
-                    Text("Follow-up interval")
-                    Spacer()
-                    Text("\(notificationIntervalMinutes) min")
-                        .foregroundStyle(.secondary)
-                }
-                .contentShape(Rectangle())
-                .onTapGesture { showFollowupDialog = true }
-
-                Stepper("Send follow-ups: \(notificationRepeatCount) times", value: $notificationRepeatCount, in: 0...30)
             }
         }
-        .navigationTitle("Edit Series")
+        .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(true)
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
-                Button("Cancel") { dismiss() }
+                Button("Cancel") { 
+                    dismiss() 
+                }
+                .foregroundColor(.secondary)
             }
             ToolbarItem(placement: .confirmationAction) {
-                Button("Save") { save() }
-                    .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || (!hasChanges && !selectionModified))
+                Button("Save") { 
+                    save() 
+                }
+                .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || (!hasChanges && !selectionModified))
+                .fontWeight(.semibold)
+                .foregroundColor(
+                    (title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || (!hasChanges && !selectionModified)) ? 
+                    .secondary : .indigo
+                )
+            }
+            ToolbarItem(placement: .bottomBar) {
+                Button(role: .destructive) {
+                    Task { await deleteSeries() }
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "trash")
+                        Text("Delete Series")
+                    }
+                }
+                .disabled(isDeletingSeries)
             }
         }
         .onAppear(perform: load)
@@ -157,6 +267,11 @@ struct EditReminderSeriesView: View {
             Button("15 min") { notificationIntervalMinutes = 15 }
             Button("30 min") { notificationIntervalMinutes = 30 }
             Button("Cancel", role: .cancel) { }
+        }
+        .alert("Delete Series", isPresented: $showDeleteSeriesError) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(deleteSeriesErrorMessage)
         }
     }
 
@@ -365,6 +480,78 @@ struct EditReminderSeriesView: View {
         // Persist changes
         try? modelContext.save()
         dismiss()
+    }
+
+    @MainActor
+    private func deleteSeries() async {
+        guard !isDeletingSeries else { return }
+        isDeletingSeries = true
+        defer { isDeletingSeries = false }
+
+        // Fetch all items in this series
+        let descriptor = FetchDescriptor<Item>(
+            predicate: #Predicate<Item> { it in it.parentReminderID == parentID }
+        )
+        var seriesItems: [Item] = []
+        do {
+            seriesItems = try modelContext.fetch(descriptor)
+        } catch {
+            seriesItems = items
+        }
+
+        // Cancel notifications for all items BEFORE deleting
+        await NotificationManager.shared.cancelNotifications(for: seriesItems)
+
+        // Delete all items
+        for it in seriesItems {
+            modelContext.delete(it)
+        }
+
+        // Persist and dismiss
+        do {
+            try modelContext.save()
+            dismiss()
+        } catch {
+            deleteSeriesErrorMessage = "Failed to delete the series. Please try again."
+            showDeleteSeriesError = true
+        }
+    }
+}
+
+// MARK: - Additional Modern Components for EditReminderSeriesView
+
+struct ModernSelectionRow: View {
+    let title: String
+    let value: String
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 16) {
+                Text(title)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(.secondary)
+                
+                Spacer()
+                
+                HStack(spacing: 8) {
+                    Text(value)
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.primary)
+                    
+                    Image(systemName: "chevron.up.chevron.down")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.secondary)
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background {
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(.regularMaterial)
+                    .stroke(.secondary.opacity(0.3), lineWidth: 1)
+            }
+        }
     }
 }
 

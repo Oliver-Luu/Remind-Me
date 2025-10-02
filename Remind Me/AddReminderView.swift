@@ -4,6 +4,7 @@ import SwiftData
 struct AddReminderView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
     @EnvironmentObject private var inAppNotificationManager: InAppNotificationManager
 
     @State private var date: Date = Calendar.current.date(byAdding: .minute, value: 1, to: Date()) ?? Date().addingTimeInterval(60)
@@ -16,83 +17,200 @@ struct AddReminderView: View {
 
     @State private var showCustomDatePicker = false
     @State private var customSelectedDates: Set<DateComponents> = []
+    @State private var animateGradient = false
+
+    @State private var showInvalidDateAlert = false
+    @State private var invalidDateMessage = ""
 
     var body: some View {
-        Form {
-            Section("Reminder Details") {
-                TextField("Reminder Title", text: $title)
-                if repeatFrequency == .custom {
-                    DatePicker("Select Time", selection: $date, displayedComponents: [.hourAndMinute])
-                    Text("This time will apply to all selected dates.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                } else {
-                    DatePicker("Select Date and Time", selection: $date, displayedComponents: [.date, .hourAndMinute])
-                }
-            }
-            
-            Section("Repeat Options") {
-                Picker("Repeat", selection: $repeatFrequency) {
-                    ForEach(RepeatFrequency.allCases, id: \.self) { frequency in
-                        Text(frequency.displayName).tag(frequency)
+        GeometryReader { geometry in
+            ZStack {
+                // Dynamic animated background
+                RadialGradient(
+                    gradient: Gradient(colors: [
+                        Color.green.opacity(0.2),
+                        Color.blue.opacity(0.15),
+                        Color.clear
+                    ]),
+                    center: animateGradient ? .topTrailing : .bottomLeading,
+                    startRadius: 30,
+                    endRadius: 300
+                )
+                .ignoresSafeArea()
+                .onAppear {
+                    withAnimation(
+                        .easeInOut(duration: 10)
+                        .repeatForever(autoreverses: true)
+                    ) {
+                        animateGradient.toggle()
                     }
-                }
-                .pickerStyle(.menu)
-                
-                if repeatFrequency != .none && repeatFrequency != .custom {
-                    Stepper("Every " + "\(repeatInterval)" + " " + "\(repeatFrequency.unitName(for: repeatInterval))", value: $repeatInterval, in: 1...52)
                 }
                 
-                if repeatFrequency != .none && repeatFrequency != .custom {
-                    Stepper("Create \(numberOfOccurrences) future reminders", value: $numberOfOccurrences, in: 1...50)
-                        .help("Number of future repeating reminders to create")
-                }
+                ScrollView {
+                    VStack(spacing: 24) {
+                        // Header Section
+                        VStack(spacing: 8) {
+                            Image(systemName: "plus.circle.fill")
+                                .font(.system(size: 40, weight: .light))
+                                .foregroundStyle(
+                                    LinearGradient(
+                                        colors: [.green, .blue],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+                            
+                            Text("New Reminder")
+                                .font(.system(size: 24, weight: .bold, design: .rounded))
+                                .foregroundColor(.primary)
+                        }
+                        .padding(.top, 8)
+                        
+                        // Form sections with glass effect
+                        VStack(spacing: 20) {
+                            // Reminder Details Section
+                            ModernFormSection(title: "Reminder Details") {
+                                VStack(spacing: 16) {
+                                    ModernTextField(title: "Reminder Title", text: $title)
+                                    
+                                    if repeatFrequency == .custom {
+                                        ModernDatePicker(
+                                            title: "Select Time",
+                                            selection: $date,
+                                            displayedComponents: [.hourAndMinute]
+                                        )
+                                        
+                                        HStack {
+                                            Image(systemName: "info.circle")
+                                                .foregroundColor(.secondary)
+                                                .font(.caption)
+                                            
+                                            Text("This time will apply to all selected dates.")
+                                                .font(.caption)
+                                                .foregroundStyle(.secondary)
+                                            
+                                            Spacer()
+                                        }
+                                    } else {
+                                        ModernDatePicker(
+                                            title: "Select Date and Time",
+                                            selection: $date,
+                                            displayedComponents: [.date, .hourAndMinute]
+                                        )
+                                    }
+                                }
+                            }
+                            
+                            // Repeat Options Section
+                            ModernFormSection(title: "Repeat Options") {
+                                VStack(spacing: 16) {
+                                    ModernPicker(
+                                        title: "Repeat",
+                                        selection: $repeatFrequency,
+                                        options: RepeatFrequency.allCases
+                                    ) { frequency in
+                                        Text(frequency.displayName).tag(frequency)
+                                    }
+                                    
+                                    if repeatFrequency != .none && repeatFrequency != .custom {
+                                        ModernStepper(
+                                            title: "Interval",
+                                            value: $repeatInterval,
+                                            range: 1...52,
+                                            suffix: repeatFrequency.unitName(for: repeatInterval)
+                                        )
+                                        
+                                        ModernStepper(
+                                            title: "Future occurrences",
+                                            value: $numberOfOccurrences,
+                                            range: 1...50,
+                                            suffix: "occurrence\(numberOfOccurrences == 1 ? "" : "s")"
+                                        )
+                                        
+                                        ModernStatusRow(
+                                            icon: "info.circle",
+                                            iconColor: .blue,
+                                            text: "Will create \(numberOfOccurrences + 1) total reminders including the first one"
+                                        )
+                                    }
 
-                if repeatFrequency == .custom {
-                    Button {
-                        showCustomDatePicker = true
-                    } label: {
-                        Label("Choose dates", systemImage: "calendar")
+                                    if repeatFrequency == .custom {
+                                        ModernActionRow(
+                                            title: "Choose dates",
+                                            icon: "calendar",
+                                            action: { showCustomDatePicker = true }
+                                        )
+                                        
+                                        ModernStatusRow(
+                                            icon: customSelectedDates.isEmpty ? "exclamationmark.circle" : "checkmark.circle.fill",
+                                            iconColor: customSelectedDates.isEmpty ? .orange : .green,
+                                            text: customSelectedDates.isEmpty ? 
+                                                "No dates selected yet" : 
+                                                "Selected \(customSelectedDates.count) date\(customSelectedDates.count == 1 ? "" : "s")"
+                                        )
+                                    }
+                                    
+                                    if repeatFrequency == .none {
+                                        ModernStatusRow(
+                                            icon: "info.circle",
+                                            iconColor: .gray,
+                                            text: "This will be a one-time reminder"
+                                        )
+                                    }
+                                }
+                            }
+                            
+                            // Notification Options Section
+                            ModernFormSection(title: "Notification Options") {
+                                VStack(spacing: 16) {
+                                    ModernPicker(
+                                        title: "Follow-up interval",
+                                        selection: $notificationIntervalMinutes,
+                                        options: [1, 2, 5, 10, 15, 30]
+                                    ) { minutes in
+                                        Text("\(minutes) min").tag(minutes)
+                                    }
+                                    
+                                    ModernStepper(
+                                        title: "Follow-up count",
+                                        value: $notificationRepeatCount,
+                                        range: 0...30,
+                                        suffix: "follow-up\(notificationRepeatCount == 1 ? "" : "s")"
+                                    )
+                                    
+                                    if notificationRepeatCount == 0 {
+                                        ModernStatusRow(
+                                            icon: "info.circle",
+                                            iconColor: .blue,
+                                            text: "Only the initial notification will be sent"
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                        .padding(.bottom, 40)
                     }
-                    if !customSelectedDates.isEmpty {
-                        Text("Selected: \(customSelectedDates.count) date\(customSelectedDates.count == 1 ? "" : "s")")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    } else {
-                        Text("No dates selected yet")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
+                    .padding(.horizontal, 20)
+                    .frame(minHeight: geometry.size.height - 100)
                 }
-            }
-            
-            Section("Notification Options") {
-                Picker("Follow-up interval", selection: $notificationIntervalMinutes) {
-                    Text("1 min").tag(1)
-                    Text("2 min").tag(2)
-                    Text("5 min").tag(5)
-                    Text("10 min").tag(10)
-                    Text("15 min").tag(15)
-                    Text("30 min").tag(30)
-                }
-                .pickerStyle(.menu)
-
-                Stepper("Send follow-ups: \(notificationRepeatCount) times", value: $notificationRepeatCount, in: 0...30)
-                    .help("How many additional notifications to send after the first one. Set to 0 to disable follow-ups.")
             }
         }
         .navigationTitle("Add Reminder")
+        .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
                 Button("Cancel") {
                     dismiss()
                 }
+                .foregroundColor(.secondary)
             }
             ToolbarItem(placement: .confirmationAction) {
                 Button("Save") {
                     save()
                 }
                 .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                .fontWeight(.semibold)
+                .foregroundColor(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? .secondary : .blue)
             }
         }
         .sheet(isPresented: $showCustomDatePicker) {
@@ -100,11 +218,46 @@ struct AddReminderView: View {
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
         }
+        .alert("Invalid Date/Time", isPresented: $showInvalidDateAlert) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(invalidDateMessage)
+        }
     }
 
     private func save() {
-        let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        let now = Date()
         let normalizedDate = floorToMinute(date)
+
+        // Validate for past date/time
+        if repeatFrequency == .custom {
+            // Build scheduled dates and ensure at least one is in the future
+            let calendar = Calendar.current
+            let timeComponents = calendar.dateComponents([.hour, .minute], from: normalizedDate)
+            let scheduled: [Date] = customSelectedDates.compactMap { comps in
+                var c = comps
+                c.hour = timeComponents.hour
+                c.minute = timeComponents.minute
+                c.second = 0
+                return calendar.date(from: c)
+            }
+            let hasFuture = scheduled.contains { $0 >= now }
+            if scheduled.isEmpty || !hasFuture {
+                invalidDateMessage = customSelectedDates.isEmpty ?
+                    "Please select at least one date." :
+                    "All selected dates are in the past. Please choose future dates."
+                showInvalidDateAlert = true
+                return
+            }
+        } else {
+            if normalizedDate < now {
+                invalidDateMessage = "The selected date/time is in the past. Please choose a future time."
+                showInvalidDateAlert = true
+                return
+            }
+        }
+        
+        let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
         if repeatFrequency == .custom {
             // Create a parent ID for the custom series
             let parentID = UUID().uuidString
@@ -143,7 +296,6 @@ struct AddReminderView: View {
                 inAppNotificationManager.scheduleInAppTrigger(for: it)
             }
             // If any newly created reminder is already due (within a small past grace), show now
-            let now = Date()
             for it in remindersToSchedule where it.timestamp <= now && it.timestamp >= now.addingTimeInterval(-10) {
                 inAppNotificationManager.addNotificationSafely(it)
             }
@@ -164,11 +316,271 @@ struct AddReminderView: View {
         // Schedule precise in-app trigger for the initial reminder
         inAppNotificationManager.scheduleInAppTrigger(for: initial)
         // If the initial reminder is already due (within a small past grace), show now
-        let now = Date()
         if initial.timestamp <= now && initial.timestamp >= now.addingTimeInterval(-10) {
             inAppNotificationManager.addNotificationSafely(initial)
         }
         dismiss()
+    }
+}
+
+// MARK: - Modern Form Components
+
+struct ModernFormSection<Content: View>: View {
+    let title: String
+    let content: Content
+    
+    init(title: String, @ViewBuilder content: () -> Content) {
+        self.title = title
+        self.content = content()
+    }
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text(title)
+                .font(.system(size: 20, weight: .semibold, design: .rounded))
+                .foregroundColor(.primary)
+                .padding(.horizontal, 4)
+            
+            VStack(spacing: 12) {
+                content
+            }
+            .padding(20)
+            .background {
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(.ultraThinMaterial)
+                    .shadow(color: .black.opacity(0.08), radius: 12, x: 0, y: 4)
+            }
+        }
+    }
+}
+
+struct ModernTextField: View {
+    let title: String
+    @Binding var text: String
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(.secondary)
+            
+            TextField("", text: $text)
+                .textFieldStyle(.plain)
+                .font(.system(size: 16, weight: .medium))
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .background {
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(.regularMaterial)
+                        .stroke(.secondary.opacity(0.3), lineWidth: 1)
+                }
+        }
+    }
+}
+
+struct ModernDatePicker: View {
+    let title: String
+    @Binding var selection: Date
+    let displayedComponents: DatePickerComponents
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(.secondary)
+            
+            HStack {
+                Spacer()
+                DatePicker("", selection: $selection, displayedComponents: displayedComponents)
+                    .datePickerStyle(.compact)
+                    .fixedSize()
+                Spacer()
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background {
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(.regularMaterial)
+                    .stroke(.secondary.opacity(0.3), lineWidth: 1)
+            }
+        }
+    }
+}
+
+struct ModernPicker<T: Hashable, Content: View>: View {
+    let title: String
+    @Binding var selection: T
+    let options: [T]
+    let content: (T) -> Content
+    
+    init(title: String, selection: Binding<T>, options: [T], @ViewBuilder content: @escaping (T) -> Content) {
+        self.title = title
+        self._selection = selection
+        self.options = options
+        self.content = content
+    }
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(.secondary)
+            
+            Picker("", selection: $selection) {
+                ForEach(options, id: \.self) { option in
+                    content(option)
+                }
+            }
+            .pickerStyle(.menu)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background {
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(.regularMaterial)
+                    .stroke(.secondary.opacity(0.3), lineWidth: 1)
+            }
+        }
+    }
+}
+
+struct ModernStepper: View {
+    let title: String
+    @Binding var value: Int
+    let range: ClosedRange<Int>
+    let suffix: String?
+    
+    init(title: String, value: Binding<Int>, range: ClosedRange<Int>, suffix: String? = nil) {
+        self.title = title
+        self._value = value
+        self.range = range
+        self.suffix = suffix
+    }
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(.secondary)
+            
+            HStack {
+                Button {
+                    if value > range.lowerBound {
+                        value -= 1
+                    }
+                } label: {
+                    Image(systemName: "minus")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.white)
+                        .frame(width: 32, height: 32)
+                        .background {
+                            Circle()
+                                .fill(value > range.lowerBound ? .blue : .secondary)
+                        }
+                }
+                .disabled(value <= range.lowerBound)
+                
+                Spacer()
+                
+                VStack(spacing: 2) {
+                    Text("\(value)")
+                        .font(.system(size: 18, weight: .semibold, design: .monospaced))
+                        .foregroundColor(.primary)
+                    
+                    if let suffix = suffix {
+                        Text(suffix)
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.secondary)
+                    }
+                }
+                
+                Spacer()
+                
+                Button {
+                    if value < range.upperBound {
+                        value += 1
+                    }
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.white)
+                        .frame(width: 32, height: 32)
+                        .background {
+                            Circle()
+                                .fill(value < range.upperBound ? .blue : .secondary)
+                        }
+                }
+                .disabled(value >= range.upperBound)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background {
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(.regularMaterial)
+                    .stroke(.secondary.opacity(0.3), lineWidth: 1)
+            }
+        }
+    }
+}
+
+struct ModernActionRow: View {
+    let title: String
+    let icon: String
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 12) {
+                Image(systemName: icon)
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(.blue)
+                    .frame(width: 24, height: 24)
+                
+                Text(title)
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(.primary)
+                
+                Spacer()
+                
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.secondary)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background {
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(.regularMaterial)
+                    .stroke(.secondary.opacity(0.3), lineWidth: 1)
+            }
+        }
+    }
+}
+
+struct ModernStatusRow: View {
+    let icon: String
+    let iconColor: Color
+    let text: String
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(iconColor)
+                .frame(width: 24, height: 24)
+            
+            Text(text)
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(.secondary)
+            
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background {
+            RoundedRectangle(cornerRadius: 12)
+                .fill(iconColor.opacity(0.1))
+                .stroke(iconColor.opacity(0.2), lineWidth: 1)
+        }
     }
 }
 

@@ -298,22 +298,28 @@ class NotificationManager: ObservableObject {
         do {
             let items = try modelContext.fetch(descriptor)
             if let item = items.first(where: { $0.id == reminderID }) {
-                // Create a new reminder 10 minutes from now
+                // Create a new reminder at the snooze time
                 let snoozeDate = Date().addingTimeInterval(10 * 60) // 10 minutes
+                let isRepeating = (item.parentReminderID != nil)
                 let snoozeReminder = Item(
                     timestamp: snoozeDate,
                     title: item.title + " (Snoozed)",
-                    repeatFrequency: .none,
-                    parentReminderID: nil,
+                    repeatFrequency: isRepeating ? item.repeatFrequency : .none,
+                    parentReminderID: isRepeating ? item.parentReminderID : nil,
                     notificationIntervalMinutes: item.notificationIntervalMinutes,
-                    notificationRepeatCount: item.notificationRepeatCount
+                    notificationRepeatCount: item.notificationRepeatCount,
+                    repeatInterval: isRepeating ? item.repeatInterval : 1
                 )
                 modelContext.insert(snoozeReminder)
+                
+                // Delete the original reminder since it has been snoozed
+                modelContext.delete(item)
+                
                 try modelContext.save()
                 
-                // Schedule notification for snoozed reminder
+                // Schedule notification for the snoozed reminder
                 await scheduleNotification(for: snoozeReminder)
-                print("Snoozed reminder: \(item.title)")
+                print("Snoozed reminder (keeping series membership if applicable) and deleted original: \(snoozeReminder.title)")
             }
         } catch {
             print("Error snoozing reminder: \(error)")

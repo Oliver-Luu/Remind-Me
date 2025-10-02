@@ -3,56 +3,174 @@ import SwiftData
 
 struct ReminderSeriesDetailView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.colorScheme) private var colorScheme
     @State private var items: [Item] = []
     @State private var selectedItem: Item?
+    @State private var showingAddOccurrenceSheet = false
+    @State private var customDate = Date()
+    @State private var animateGradient = false
 
     let parentID: String
 
     var body: some View {
-        List {
-            if upcomingItems.isEmpty && pastItems.isEmpty {
-                ContentUnavailableView("No reminders in this series", systemImage: "bell.slash")
-            } else {
-                if !upcomingItems.isEmpty {
-                    Section("Upcoming") {
-                        ForEach(upcomingItems) { item in
-                            row(for: item)
-                        }
-                        .onDelete { offsets in
-                            delete(offsets, from: upcomingItems)
-                        }
+        GeometryReader { geometry in
+            ZStack {
+                // Dynamic animated background
+                RadialGradient(
+                    gradient: Gradient(colors: [
+                        Color.teal.opacity(0.15),
+                        Color.blue.opacity(0.1),
+                        Color.clear
+                    ]),
+                    center: animateGradient ? .bottomTrailing : .topLeading,
+                    startRadius: 40,
+                    endRadius: 350
+                )
+                .ignoresSafeArea()
+                .onAppear {
+                    withAnimation(
+                        .easeInOut(duration: 11)
+                        .repeatForever(autoreverses: true)
+                    ) {
+                        animateGradient.toggle()
                     }
                 }
-                if !pastItems.isEmpty {
-                    Section("Past") {
-                        ForEach(pastItems) { item in
-                            row(for: item)
+                
+                if upcomingItems.isEmpty && pastItems.isEmpty {
+                    // Empty state
+                    VStack(spacing: 24) {
+                        Spacer()
+                        
+                        VStack(spacing: 20) {
+                            Image(systemName: "bell.slash.circle")
+                                .font(.system(size: 80, weight: .ultraLight))
+                                .foregroundStyle(
+                                    LinearGradient(
+                                        colors: [.teal, .blue],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+                            
+                            VStack(spacing: 8) {
+                                Text("No reminders in this series")
+                                    .font(.system(size: 24, weight: .semibold, design: .rounded))
+                                    .foregroundColor(.primary)
+                                
+                                Text("Add a new occurrence to get started")
+                                    .font(.system(size: 16, weight: .medium))
+                                    .foregroundColor(.secondary)
+                                    .multilineTextAlignment(.center)
+                            }
                         }
-                        .onDelete { offsets in
-                            delete(offsets, from: pastItems)
+                        
+                        Spacer()
+                    }
+                    .padding(.horizontal, 32)
+                } else {
+                    ScrollView {
+                        LazyVStack(spacing: 16) {
+                            // Header with series info
+                            VStack(spacing: 12) {
+                                Image(systemName: "repeat.circle.fill")
+                                    .font(.system(size: 32, weight: .light))
+                                    .foregroundStyle(
+                                        LinearGradient(
+                                            colors: [.teal, .blue],
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        )
+                                    )
+                                
+                                Text(seriesTitle)
+                                    .font(.system(size: 20, weight: .bold, design: .rounded))
+                                    .foregroundColor(.primary)
+                                    .multilineTextAlignment(.center)
+                            }
+                            .padding(.top, 8)
+                            
+                            // Upcoming reminders
+                            if !upcomingItems.isEmpty {
+                                RemindersSectionDetail(title: "Upcoming") {
+                                    ForEach(upcomingItems) { item in
+                                        ReminderDetailCard(
+                                            item: item,
+                                            selectedItem: $selectedItem,
+                                            modelContext: modelContext,
+                                            onUpdate: { load() }
+                                        )
+                                    }
+                                }
+                            }
+                            
+                            // Past reminders
+                            if !pastItems.isEmpty {
+                                RemindersSectionDetail(title: "Past") {
+                                    ForEach(pastItems) { item in
+                                        ReminderDetailCard(
+                                            item: item,
+                                            selectedItem: $selectedItem,
+                                            modelContext: modelContext,
+                                            onUpdate: { load() }
+                                        )
+                                    }
+                                }
+                            }
+                            
+                            // Add some bottom padding
+                            Color.clear.frame(height: 100)
                         }
+                        .padding(.horizontal, 20)
                     }
                 }
             }
         }
-        .navigationTitle(seriesTitle)
+        .navigationTitle("")
+        .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button {
-                    addNextFromSeries()
+                    showingAddOccurrenceSheet = true
                 } label: {
-                    Label("Add Next", systemImage: "plus")
+                    Image(systemName: "plus")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(.white)
+                        .frame(width: 36, height: 36)
+                        .background {
+                            Circle()
+                                .fill(
+                                    LinearGradient(
+                                        colors: [.teal, .blue],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+                                .shadow(color: .teal.opacity(0.3), radius: 8, x: 0, y: 4)
+                        }
                 }
             }
             ToolbarItem(placement: .topBarTrailing) {
                 NavigationLink {
                     EditReminderSeriesView(parentID: parentID)
                 } label: {
-                    Label("Edit Series", systemImage: "pencil")
+                    Image(systemName: "pencil")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.primary)
                 }
             }
         }
-        .onAppear(perform: load)
+        .onAppear {
+            load()
+            // Initialize custom date for adding new occurrences
+            if let template = items.first {
+                let calendar = Calendar.current
+                let templateTime = calendar.dateComponents([.hour, .minute], from: template.timestamp)
+                customDate = calendar.date(bySettingHour: templateTime.hour ?? 9,
+                                         minute: templateTime.minute ?? 0,
+                                         second: 0,
+                                         of: Date()) ?? Date()
+            }
+        }
         .sheet(item: $selectedItem) { selected in
             NavigationStack {
                 EditReminderView(item: selected)
@@ -60,49 +178,20 @@ struct ReminderSeriesDetailView: View {
                     .presentationDragIndicator(.visible)
             }
         }
-    }
-
-    private func row(for item: Item) -> some View {
-        HStack(spacing: 12) {
-            // Leading icon: toggle completion explicitly
-            Button {
-                toggleCompletion(for: item)
-            } label: {
-                Image(systemName: item.isCompleted ? "checkmark.circle.fill" : "bell")
-                    .foregroundStyle(item.isCompleted ? .green : .blue)
-            }
-            .buttonStyle(.plain)
-
-            // Tapping the reminder content opens the edit page explicitly
-            Button {
-                selectedItem = item
-            } label: {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(item.title)
-                        .font(.headline)
-                        .strikethrough(item.isCompleted)
-
-                    Text(formatted(date: item.timestamp))
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+        .sheet(isPresented: $showingAddOccurrenceSheet) {
+            NavigationStack {
+                AddCustomOccurrenceView(
+                    parentID: parentID,
+                    templateItem: items.first,
+                    customDate: $customDate
+                ) { newItem in
+                    modelContext.insert(newItem)
+                    try? modelContext.save()
+                    load()
+                    showingAddOccurrenceSheet = false
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-        }
-        .padding(.vertical, 4)
-        .contextMenu {
-            Button("Edit") {
-                selectedItem = item
-            }
-            Divider()
-            Button("Delete", role: .destructive) {
-                Task {
-                    await NotificationManager.shared.handleReminderDeleted(item)
-                }
-                modelContext.delete(item)
-                load()
+                .presentationDetents([.fraction(0.75), .large])
+                .presentationDragIndicator(.visible)
             }
         }
     }
@@ -166,6 +255,225 @@ struct ReminderSeriesDetailView: View {
         df.dateStyle = .medium
         df.timeStyle = .short
         return df.string(from: date)
+    }
+}
+
+// MARK: - Supporting Views for Series Detail
+
+struct RemindersSectionDetail<Content: View>: View {
+    let title: String
+    let content: Content
+    
+    init(title: String, @ViewBuilder content: () -> Content) {
+        self.title = title
+        self.content = content()
+    }
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Text(title)
+                    .font(.system(size: 20, weight: .bold, design: .rounded))
+                    .foregroundColor(.primary)
+                Spacer()
+            }
+            .padding(.horizontal, 4)
+            
+            LazyVStack(spacing: 12) {
+                content
+            }
+        }
+    }
+}
+
+struct ReminderDetailCard: View {
+    let item: Item
+    @Binding var selectedItem: Item?
+    let modelContext: ModelContext
+    let onUpdate: () -> Void
+    @State private var cardScale = 1.0
+    @State private var offsetX: CGFloat = 0
+    @State private var startOffsetX: CGFloat = 0
+    private let revealWidth: CGFloat = 88
+    
+    var body: some View {
+        ZStack(alignment: .trailing) {
+            // Trailing red delete background (small button style)
+            HStack(spacing: 0) {
+                Spacer()
+                Button(role: .destructive) {
+                    Task { await NotificationManager.shared.handleReminderDeleted(item) }
+                    modelContext.delete(item)
+                    try? modelContext.save()
+                    onUpdate()
+                    offsetX = 0
+                    startOffsetX = 0
+                } label: {
+                    Label("Delete", systemImage: "trash")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.white)
+                        .frame(width: revealWidth)
+                        .frame(maxHeight: .infinity)
+                        .background(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .fill(Color.red)
+                        )
+                        .contentShape(Rectangle())
+                }
+                .tint(.red)
+            }
+            .clipShape(RoundedCorners(radius: 16, corners: [.topRight, .bottomRight]))
+            .opacity(offsetX < 0 ? 1 : 0)
+            .allowsHitTesting(offsetX < 0)
+            .animation(.easeInOut(duration: 0.2), value: offsetX)
+            
+            // Foreground card content
+            HStack(spacing: 16) {
+                // Completion toggle
+                Button {
+                    toggleCompletion(for: item)
+                } label: {
+                    Image(systemName: item.isCompleted ? "checkmark.circle.fill" : "circle")
+                        .font(.system(size: 24, weight: .medium))
+                        .foregroundStyle(item.isCompleted ? .green : .secondary)
+                }
+                
+                // Content area (tappable for edit)
+                Button {
+                    selectedItem = item
+                } label: {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(item.title)
+                            .font(.system(size: 16, weight: .semibold, design: .rounded))
+                            .foregroundColor(.primary)
+                            .strikethrough(item.isCompleted)
+                            .multilineTextAlignment(.leading)
+                        
+                        HStack(spacing: 8) {
+                            Label {
+                                Text(formatted(date: item.timestamp))
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundColor(.secondary)
+                            } icon: {
+                                Image(systemName: "calendar")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            
+                            if item.timestamp < Date() {
+                                Label {
+                                    Text("Past")
+                                        .font(.caption)
+                                        .foregroundColor(.orange)
+                                } icon: {
+                                    Image(systemName: "clock.arrow.circlepath")
+                                        .font(.caption2)
+                                        .foregroundColor(.orange)
+                                }
+                            } else if Calendar.current.isDateInToday(item.timestamp) {
+                                Label {
+                                    Text("Today")
+                                        .font(.caption)
+                                        .foregroundColor(.blue)
+                                } icon: {
+                                    Image(systemName: "today")
+                                        .font(.caption2)
+                                        .foregroundColor(.blue)
+                                }
+                            }
+                            
+                            Spacer()
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .buttonStyle(.plain)
+                
+                // Options menu
+                if item.isCompleted {
+                    Button(role: .destructive) {
+                        Task { await NotificationManager.shared.handleReminderDeleted(item) }
+                        modelContext.delete(item)
+                        try? modelContext.save()
+                        onUpdate()
+                        offsetX = 0
+                        startOffsetX = 0
+                    } label: {
+                        Image(systemName: "trash")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.white)
+                            .frame(width: 28, height: 28)
+                            .background {
+                                Circle().fill(Color.red)
+                            }
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(16)
+            .background {
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(.regularMaterial)
+                    .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 4)
+            }
+            .contentShape(Rectangle())
+            .offset(x: offsetX)
+            .highPriorityGesture(
+                DragGesture(minimumDistance: 10)
+                    .onChanged { value in
+                        let t = value.translation
+                        guard abs(t.width) > abs(t.height) else { return }
+                        let proposed = startOffsetX + t.width
+                        if proposed < -revealWidth {
+                            let extra = proposed + revealWidth // negative when over-dragging left
+                            offsetX = -revealWidth + extra / 6 // rubber-band beyond limit
+                        } else if proposed > 0 {
+                            offsetX = proposed / 6 // rubber-band when pulling right past 0
+                        } else {
+                            offsetX = proposed
+                        }
+                    }
+                    .onEnded { value in
+                        let predicted = startOffsetX + value.predictedEndTranslation.width
+                        let willOpen = -predicted > revealWidth * 0.4
+                        let target: CGFloat = willOpen ? -revealWidth : 0
+                        let overshoot: CGFloat = willOpen ? (target - 3) : (target + 3)
+                        
+                        // Phase 1: quick overshoot
+                        withAnimation(.spring(response: 0.16, dampingFraction: 0.7, blendDuration: 0.08)) {
+                            offsetX = overshoot
+                        }
+                        // Phase 2: settle to target
+                        withAnimation(.spring(response: 0.32, dampingFraction: 0.9, blendDuration: 0.1).delay(0.02)) {
+                            offsetX = target
+                        }
+                        startOffsetX = target
+                    }
+            )
+        }
+        .scaleEffect(cardScale)
+        .onTapGesture {
+            withAnimation(.easeInOut(duration: 0.1)) { cardScale = 0.95 }
+            withAnimation(.easeInOut(duration: 0.1).delay(0.1)) { cardScale = 1.0 }
+        }
+    }
+    
+    private func formatted(date: Date) -> String {
+        let df = DateFormatter()
+        df.dateStyle = .medium
+        df.timeStyle = .short
+        return df.string(from: date)
+    }
+    
+    private func toggleCompletion(for item: Item) {
+        withAnimation {
+            item.isCompleted.toggle()
+            if item.isCompleted {
+                Task { await NotificationManager.shared.handleReminderCompleted(item) }
+            }
+            try? modelContext.save()
+            onUpdate()
+        }
     }
 }
 
