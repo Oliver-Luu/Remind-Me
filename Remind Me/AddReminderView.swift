@@ -48,36 +48,21 @@ struct AddReminderView: View {
                 
                 ScrollView {
                     VStack(spacing: 24) {
-                        // Header Section
-                        VStack(spacing: 8) {
-                            Image(systemName: "plus.circle.fill")
-                                .font(.system(size: 40, weight: .light))
-                                .foregroundStyle(
-                                    LinearGradient(
-                                        colors: [.green, .blue],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    )
-                                )
-                            
-                            Text("New Reminder")
-                                .font(.system(size: 24, weight: .bold, design: .rounded))
-                                .foregroundColor(.primary)
-                        }
-                        .padding(.top, 8)
+                        // Removed Header Section
                         
                         // Form sections with glass effect
                         VStack(spacing: 20) {
                             // Reminder Details Section
                             ModernFormSection(title: "Reminder Details") {
                                 VStack(spacing: 16) {
-                                    ModernTextField(title: "Reminder Title", text: $title)
+                                    ModernTextField(title: "Reminder Title", text: $title, centered: true)
                                     
                                     if repeatFrequency == .custom {
                                         ModernDatePicker(
                                             title: "Select Time",
                                             selection: $date,
-                                            displayedComponents: [.hourAndMinute]
+                                            displayedComponents: [.hourAndMinute],
+                                            centered: true
                                         )
                                         
                                         HStack {
@@ -95,7 +80,8 @@ struct AddReminderView: View {
                                         ModernDatePicker(
                                             title: "Select Date and Time",
                                             selection: $date,
-                                            displayedComponents: [.date, .hourAndMinute]
+                                            displayedComponents: [.date, .hourAndMinute],
+                                            centered: true
                                         )
                                     }
                                 }
@@ -104,7 +90,7 @@ struct AddReminderView: View {
                             // Repeat Options Section
                             ModernFormSection(title: "Repeat Options") {
                                 VStack(spacing: 16) {
-                                    ModernPicker(
+                                    ModernCenteredPicker(
                                         title: "Repeat",
                                         selection: $repeatFrequency,
                                         options: RepeatFrequency.allCases
@@ -188,14 +174,14 @@ struct AddReminderView: View {
                                 }
                             }
                         }
-                        .padding(.bottom, 40)
+                        .padding(.top, 32)
+                        .padding(.horizontal, 20)
+                        .frame(minHeight: geometry.size.height - 100)
                     }
-                    .padding(.horizontal, 20)
-                    .frame(minHeight: geometry.size.height - 100)
                 }
             }
         }
-        .navigationTitle("Add Reminder")
+        .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
@@ -211,6 +197,15 @@ struct AddReminderView: View {
                 .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 .fontWeight(.semibold)
                 .foregroundColor(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? .secondary : .blue)
+            }
+            ToolbarItem(placement: .principal) {
+                TitleBarView(
+                    title: "Add Reminder",
+                    iconSystemName: "plus.circle.fill",
+                    gradientColors: [.green, .blue],
+                    topPadding: 32,
+                    fontScale: 0.95
+                )
             }
         }
         .sheet(isPresented: $showCustomDatePicker) {
@@ -323,266 +318,7 @@ struct AddReminderView: View {
     }
 }
 
-// MARK: - Modern Form Components
 
-struct ModernFormSection<Content: View>: View {
-    let title: String
-    let content: Content
-    
-    init(title: String, @ViewBuilder content: () -> Content) {
-        self.title = title
-        self.content = content()
-    }
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text(title)
-                .font(.system(size: 20, weight: .semibold, design: .rounded))
-                .foregroundColor(.primary)
-                .padding(.horizontal, 4)
-            
-            VStack(spacing: 12) {
-                content
-            }
-            .padding(20)
-            .background {
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(.ultraThinMaterial)
-                    .shadow(color: .black.opacity(0.08), radius: 12, x: 0, y: 4)
-            }
-        }
-    }
-}
-
-struct ModernTextField: View {
-    let title: String
-    @Binding var text: String
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(title)
-                .font(.system(size: 14, weight: .medium))
-                .foregroundColor(.secondary)
-            
-            TextField("", text: $text)
-                .textFieldStyle(.plain)
-                .font(.system(size: 16, weight: .medium))
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
-                .background {
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(.regularMaterial)
-                        .stroke(.secondary.opacity(0.3), lineWidth: 1)
-                }
-        }
-    }
-}
-
-struct ModernDatePicker: View {
-    let title: String
-    @Binding var selection: Date
-    let displayedComponents: DatePickerComponents
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(title)
-                .font(.system(size: 14, weight: .medium))
-                .foregroundColor(.secondary)
-            
-            HStack {
-                Spacer()
-                DatePicker("", selection: $selection, displayedComponents: displayedComponents)
-                    .datePickerStyle(.compact)
-                    .fixedSize()
-                Spacer()
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            .background {
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(.regularMaterial)
-                    .stroke(.secondary.opacity(0.3), lineWidth: 1)
-            }
-        }
-    }
-}
-
-struct ModernPicker<T: Hashable, Content: View>: View {
-    let title: String
-    @Binding var selection: T
-    let options: [T]
-    let content: (T) -> Content
-    
-    init(title: String, selection: Binding<T>, options: [T], @ViewBuilder content: @escaping (T) -> Content) {
-        self.title = title
-        self._selection = selection
-        self.options = options
-        self.content = content
-    }
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(title)
-                .font(.system(size: 14, weight: .medium))
-                .foregroundColor(.secondary)
-            
-            Picker("", selection: $selection) {
-                ForEach(options, id: \.self) { option in
-                    content(option)
-                }
-            }
-            .pickerStyle(.menu)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            .background {
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(.regularMaterial)
-                    .stroke(.secondary.opacity(0.3), lineWidth: 1)
-            }
-        }
-    }
-}
-
-struct ModernStepper: View {
-    let title: String
-    @Binding var value: Int
-    let range: ClosedRange<Int>
-    let suffix: String?
-    
-    init(title: String, value: Binding<Int>, range: ClosedRange<Int>, suffix: String? = nil) {
-        self.title = title
-        self._value = value
-        self.range = range
-        self.suffix = suffix
-    }
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(title)
-                .font(.system(size: 14, weight: .medium))
-                .foregroundColor(.secondary)
-            
-            HStack {
-                Button {
-                    if value > range.lowerBound {
-                        value -= 1
-                    }
-                } label: {
-                    Image(systemName: "minus")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.white)
-                        .frame(width: 32, height: 32)
-                        .background {
-                            Circle()
-                                .fill(value > range.lowerBound ? .blue : .secondary)
-                        }
-                }
-                .disabled(value <= range.lowerBound)
-                
-                Spacer()
-                
-                VStack(spacing: 2) {
-                    Text("\(value)")
-                        .font(.system(size: 18, weight: .semibold, design: .monospaced))
-                        .foregroundColor(.primary)
-                    
-                    if let suffix = suffix {
-                        Text(suffix)
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundColor(.secondary)
-                    }
-                }
-                
-                Spacer()
-                
-                Button {
-                    if value < range.upperBound {
-                        value += 1
-                    }
-                } label: {
-                    Image(systemName: "plus")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.white)
-                        .frame(width: 32, height: 32)
-                        .background {
-                            Circle()
-                                .fill(value < range.upperBound ? .blue : .secondary)
-                        }
-                }
-                .disabled(value >= range.upperBound)
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            .background {
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(.regularMaterial)
-                    .stroke(.secondary.opacity(0.3), lineWidth: 1)
-            }
-        }
-    }
-}
-
-struct ModernActionRow: View {
-    let title: String
-    let icon: String
-    let action: () -> Void
-    
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 12) {
-                Image(systemName: icon)
-                    .font(.system(size: 16, weight: .medium))
-                    .foregroundColor(.blue)
-                    .frame(width: 24, height: 24)
-                
-                Text(title)
-                    .font(.system(size: 16, weight: .medium))
-                    .foregroundColor(.primary)
-                
-                Spacer()
-                
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(.secondary)
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            .background {
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(.regularMaterial)
-                    .stroke(.secondary.opacity(0.3), lineWidth: 1)
-            }
-        }
-    }
-}
-
-struct ModernStatusRow: View {
-    let icon: String
-    let iconColor: Color
-    let text: String
-    
-    var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: icon)
-                .font(.system(size: 14, weight: .medium))
-                .foregroundColor(iconColor)
-                .frame(width: 24, height: 24)
-            
-            Text(text)
-                .font(.system(size: 14, weight: .medium))
-                .foregroundColor(.secondary)
-            
-            Spacer()
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
-        .background {
-            RoundedRectangle(cornerRadius: 12)
-                .fill(iconColor.opacity(0.1))
-                .stroke(iconColor.opacity(0.2), lineWidth: 1)
-        }
-    }
-}
 
 #Preview {
     NavigationStack {
@@ -590,3 +326,4 @@ struct ModernStatusRow: View {
     }
     .modelContainer(for: Item.self, inMemory: true)
 }
+

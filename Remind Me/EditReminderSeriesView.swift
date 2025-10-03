@@ -21,7 +21,6 @@ struct EditReminderSeriesView: View {
     @State private var customSelectedDates: Set<DateComponents> = []
     @State private var selectionModified = false
     @State private var didInitializeCustomDates = false
-    @State private var animateGradient = false
 
     @State private var showRepeatDialog = false
     @State private var showFollowupDialog = false
@@ -34,25 +33,26 @@ struct EditReminderSeriesView: View {
         GeometryReader { geometry in
             ZStack {
                 // Dynamic animated background
-                RadialGradient(
-                    gradient: Gradient(colors: [
+                CrossingRadialBackground(
+                    colorsA: [
                         Color.indigo.opacity(0.2),
                         Color.purple.opacity(0.15),
                         Color.clear
-                    ]),
-                    center: animateGradient ? .bottomLeading : .topTrailing,
+                    ],
+                    colorsB: [
+                        Color.purple.opacity(0.18),
+                        Color.indigo.opacity(0.12),
+                        Color.clear
+                    ],
+                    startCenterA: .topTrailing,
+                    endCenterA: .bottomLeading,
+                    startCenterB: .bottomLeading,
+                    endCenterB: .topTrailing,
                     startRadius: 30,
-                    endRadius: 300
+                    endRadius: 300,
+                    duration: 8,
+                    autoreverses: true
                 )
-                .ignoresSafeArea()
-                .onAppear {
-                    withAnimation(
-                        .easeInOut(duration: 8)
-                        .repeatForever(autoreverses: true)
-                    ) {
-                        animateGradient.toggle()
-                    }
-                }
                 
                 ScrollView {
                     VStack(spacing: 24) {
@@ -193,6 +193,14 @@ struct EditReminderSeriesView: View {
                 .foregroundColor(
                     (title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || (!hasChanges && !selectionModified)) ? 
                     .secondary : .indigo
+                )
+            }
+            ToolbarItem(placement: .principal) {
+                TitleBarView(
+                    title: "Edit Series",
+                    iconSystemName: "repeat.circle.fill",
+                    gradientColors: [.indigo, .purple],
+                    topPadding: 32
                 )
             }
             ToolbarItem(placement: .bottomBar) {
@@ -568,3 +576,4 @@ struct ModernSelectionRow: View {
     return NavigationStack { EditReminderSeriesView(parentID: parent) }
         .modelContainer(container)
 }
+

@@ -95,8 +95,28 @@ struct AddCustomOccurrenceView: View {
                 .padding(.bottom)
             }
         }
-        .navigationTitle("Add Occurrence")
+        .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                VStack(spacing: 4) {
+                    Text("Add Occurrence")
+                        .font(.system(size: 40, weight: .bold, design: .rounded))
+                        .foregroundColor(.primary)
+                        .multilineTextAlignment(.center)
+                    Image(systemName: "calendar.badge.plus")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [.teal, .blue],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                }
+                .padding(.top, 32)
+            }
+        }
         .alert("Duplicate Reminder", isPresented: $showingDuplicateAlert) {
             Button("OK") { }
         } message: {
@@ -204,3 +224,4 @@ struct AddCustomOccurrenceView: View {
     }
     .modelContainer(container)
 }
+

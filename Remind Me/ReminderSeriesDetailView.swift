@@ -8,121 +8,102 @@ struct ReminderSeriesDetailView: View {
     @State private var selectedItem: Item?
     @State private var showingAddOccurrenceSheet = false
     @State private var customDate = Date()
-    @State private var animateGradient = false
 
     let parentID: String
 
     var body: some View {
-        GeometryReader { geometry in
-            ZStack {
-                // Dynamic animated background
-                RadialGradient(
-                    gradient: Gradient(colors: [
-                        Color.teal.opacity(0.15),
-                        Color.blue.opacity(0.1),
-                        Color.clear
-                    ]),
-                    center: animateGradient ? .bottomTrailing : .topLeading,
-                    startRadius: 40,
-                    endRadius: 350
-                )
-                .ignoresSafeArea()
-                .onAppear {
-                    withAnimation(
-                        .easeInOut(duration: 11)
-                        .repeatForever(autoreverses: true)
-                    ) {
-                        animateGradient.toggle()
-                    }
-                }
-                
-                if upcomingItems.isEmpty && pastItems.isEmpty {
-                    // Empty state
-                    VStack(spacing: 24) {
-                        Spacer()
-                        
-                        VStack(spacing: 20) {
-                            Image(systemName: "bell.slash.circle")
-                                .font(.system(size: 80, weight: .ultraLight))
-                                .foregroundStyle(
-                                    LinearGradient(
-                                        colors: [.teal, .blue],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    )
+        ZStack {
+            // Dynamic animated background
+            CrossingRadialBackground(
+                colorsA: [
+                    Color.teal.opacity(0.15),
+                    Color.blue.opacity(0.1),
+                    Color.clear
+                ],
+                colorsB: [
+                    Color.blue.opacity(0.12),
+                    Color.teal.opacity(0.08),
+                    Color.clear
+                ],
+                startCenterA: .topLeading,
+                endCenterA: .bottomTrailing,
+                startCenterB: .bottomTrailing,
+                endCenterB: .topLeading,
+                startRadius: 40,
+                endRadius: 350,
+                duration: 11,
+                autoreverses: true
+            )
+            
+            if upcomingItems.isEmpty && pastItems.isEmpty {
+                // Empty state
+                VStack(spacing: 24) {
+                    Spacer()
+                    
+                    VStack(spacing: 20) {
+                        Image(systemName: "bell.slash.circle")
+                            .font(.system(size: 80, weight: .ultraLight))
+                            .foregroundStyle(
+                                LinearGradient(
+                                    colors: [.teal, .blue],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
                                 )
+                            )
+                        
+                        VStack(spacing: 8) {
+                            Text("No reminders in this series")
+                                .font(.system(size: 24, weight: .semibold, design: .rounded))
+                                .foregroundColor(.primary)
                             
-                            VStack(spacing: 8) {
-                                Text("No reminders in this series")
-                                    .font(.system(size: 24, weight: .semibold, design: .rounded))
-                                    .foregroundColor(.primary)
-                                
-                                Text("Add a new occurrence to get started")
-                                    .font(.system(size: 16, weight: .medium))
-                                    .foregroundColor(.secondary)
-                                    .multilineTextAlignment(.center)
+                            Text("Add a new occurrence to get started")
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                        }
+                    }
+                    
+                    Spacer()
+                }
+                .padding(.horizontal, 32)
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: 16) {
+                        // Upcoming reminders
+                        if !upcomingItems.isEmpty {
+                            RemindersSectionDetail(title: "Upcoming") {
+                                ForEach(upcomingItems) { item in
+                                    ReminderDetailCard(
+                                        item: item,
+                                        selectedItem: $selectedItem,
+                                        modelContext: modelContext,
+                                        onUpdate: { load() }
+                                    )
+                                }
                             }
                         }
                         
-                        Spacer()
-                    }
-                    .padding(.horizontal, 32)
-                } else {
-                    ScrollView {
-                        LazyVStack(spacing: 16) {
-                            // Header with series info
-                            VStack(spacing: 12) {
-                                Image(systemName: "repeat.circle.fill")
-                                    .font(.system(size: 32, weight: .light))
-                                    .foregroundStyle(
-                                        LinearGradient(
-                                            colors: [.teal, .blue],
-                                            startPoint: .topLeading,
-                                            endPoint: .bottomTrailing
-                                        )
+                        // Past reminders
+                        if !pastItems.isEmpty {
+                            RemindersSectionDetail(title: "Past") {
+                                ForEach(pastItems) { item in
+                                    ReminderDetailCard(
+                                        item: item,
+                                        selectedItem: $selectedItem,
+                                        modelContext: modelContext,
+                                        onUpdate: { load() }
                                     )
-                                
-                                Text(seriesTitle)
-                                    .font(.system(size: 20, weight: .bold, design: .rounded))
-                                    .foregroundColor(.primary)
-                                    .multilineTextAlignment(.center)
-                            }
-                            .padding(.top, 8)
-                            
-                            // Upcoming reminders
-                            if !upcomingItems.isEmpty {
-                                RemindersSectionDetail(title: "Upcoming") {
-                                    ForEach(upcomingItems) { item in
-                                        ReminderDetailCard(
-                                            item: item,
-                                            selectedItem: $selectedItem,
-                                            modelContext: modelContext,
-                                            onUpdate: { load() }
-                                        )
-                                    }
                                 }
                             }
-                            
-                            // Past reminders
-                            if !pastItems.isEmpty {
-                                RemindersSectionDetail(title: "Past") {
-                                    ForEach(pastItems) { item in
-                                        ReminderDetailCard(
-                                            item: item,
-                                            selectedItem: $selectedItem,
-                                            modelContext: modelContext,
-                                            onUpdate: { load() }
-                                        )
-                                    }
-                                }
-                            }
-                            
-                            // Add some bottom padding
-                            Color.clear.frame(height: 100)
                         }
-                        .padding(.horizontal, 20)
+                        
+                        // Add some bottom padding for safe scrolling
+                        Color.clear.frame(height: 120)
                     }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 1) // Small top padding to ensure content isn't clipped
                 }
+                .scrollIndicators(.visible) // Make sure scroll indicators are visible
             }
         }
         .navigationTitle("")
@@ -157,6 +138,14 @@ struct ReminderSeriesDetailView: View {
                         .font(.system(size: 16, weight: .medium))
                         .foregroundColor(.primary)
                 }
+            }
+            ToolbarItem(placement: .principal) {
+                TitleBarView(
+                    title: seriesTitle,
+                    iconSystemName: "repeat.circle.fill",
+                    gradientColors: [.teal, .blue],
+                    topPadding: 32
+                )
             }
         }
         .onAppear {
@@ -338,56 +327,51 @@ struct ReminderDetailCard: View {
                         .foregroundStyle(item.isCompleted ? .green : .secondary)
                 }
                 
-                // Content area (tappable for edit)
-                Button {
-                    selectedItem = item
-                } label: {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(item.title)
-                            .font(.system(size: 16, weight: .semibold, design: .rounded))
-                            .foregroundColor(.primary)
-                            .strikethrough(item.isCompleted)
-                            .multilineTextAlignment(.leading)
-                        
-                        HStack(spacing: 8) {
-                            Label {
-                                Text(formatted(date: item.timestamp))
-                                    .font(.system(size: 14, weight: .medium))
-                                    .foregroundColor(.secondary)
-                            } icon: {
-                                Image(systemName: "calendar")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
-                            
-                            if item.timestamp < Date() {
-                                Label {
-                                    Text("Past")
-                                        .font(.caption)
-                                        .foregroundColor(.orange)
-                                } icon: {
-                                    Image(systemName: "clock.arrow.circlepath")
-                                        .font(.caption2)
-                                        .foregroundColor(.orange)
-                                }
-                            } else if Calendar.current.isDateInToday(item.timestamp) {
-                                Label {
-                                    Text("Today")
-                                        .font(.caption)
-                                        .foregroundColor(.blue)
-                                } icon: {
-                                    Image(systemName: "today")
-                                        .font(.caption2)
-                                        .foregroundColor(.blue)
-                                }
-                            }
-                            
-                            Spacer()
+                // Content area (tappable for edit across the whole card)
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(item.title)
+                        .font(.system(size: 16, weight: .semibold, design: .rounded))
+                        .foregroundColor(.primary)
+                        .strikethrough(item.isCompleted)
+                        .multilineTextAlignment(.leading)
+                    
+                    HStack(spacing: 8) {
+                        Label {
+                            Text(formatted(date: item.timestamp))
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(.secondary)
+                        } icon: {
+                            Image(systemName: "calendar")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
                         }
+                        
+                        if item.timestamp < Date() {
+                            Label {
+                                Text("Past")
+                                    .font(.caption)
+                                    .foregroundColor(.orange)
+                            } icon: {
+                                Image(systemName: "clock.arrow.circlepath")
+                                    .font(.caption2)
+                                    .foregroundColor(.orange)
+                            }
+                        } else if Calendar.current.isDateInToday(item.timestamp) {
+                            Label {
+                                Text("Today")
+                                    .font(.caption)
+                                    .foregroundColor(.blue)
+                            } icon: {
+                                Image(systemName: "today")
+                                    .font(.caption2)
+                                    .foregroundColor(.blue)
+                            }
+                        }
+                        
+                        Spacer()
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .buttonStyle(.plain)
+                .frame(maxWidth: .infinity, alignment: .leading)
                 
                 // Options menu
                 if item.isCompleted {
@@ -418,11 +402,12 @@ struct ReminderDetailCard: View {
             }
             .contentShape(Rectangle())
             .offset(x: offsetX)
-            .highPriorityGesture(
-                DragGesture(minimumDistance: 10)
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 20)
                     .onChanged { value in
                         let t = value.translation
-                        guard abs(t.width) > abs(t.height) else { return }
+                        // Only respond to clearly horizontal drags
+                        guard abs(t.width) > max(abs(t.height) * 2, 20) else { return }
                         let proposed = startOffsetX + t.width
                         if proposed < -revealWidth {
                             let extra = proposed + revealWidth // negative when over-dragging left
@@ -434,6 +419,16 @@ struct ReminderDetailCard: View {
                         }
                     }
                     .onEnded { value in
+                        let t = value.translation
+                        // Only respond to clearly horizontal drags
+                        guard abs(t.width) > max(abs(t.height) * 2, 20) else { 
+                            // Reset to start position if this wasn't a clear horizontal drag
+                            withAnimation(.spring(response: 0.32, dampingFraction: 0.9)) {
+                                offsetX = startOffsetX
+                            }
+                            return 
+                        }
+                        
                         let predicted = startOffsetX + value.predictedEndTranslation.width
                         let willOpen = -predicted > revealWidth * 0.4
                         let target: CGFloat = willOpen ? -revealWidth : 0
@@ -455,6 +450,7 @@ struct ReminderDetailCard: View {
         .onTapGesture {
             withAnimation(.easeInOut(duration: 0.1)) { cardScale = 0.95 }
             withAnimation(.easeInOut(duration: 0.1).delay(0.1)) { cardScale = 1.0 }
+            selectedItem = item
         }
     }
     
@@ -490,3 +486,4 @@ struct ReminderDetailCard: View {
     return NavigationStack { ReminderSeriesDetailView(parentID: parent) }
         .modelContainer(container)
 }
+

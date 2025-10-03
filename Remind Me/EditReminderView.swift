@@ -62,42 +62,28 @@ struct EditReminderView: View {
                 
                 ScrollView {
                     VStack(spacing: 24) {
-                        // Header Section
-                        VStack(spacing: 8) {
-                            Image(systemName: "pencil.circle.fill")
-                                .font(.system(size: 40, weight: .light))
-                                .foregroundStyle(
-                                    LinearGradient(
-                                        colors: [.purple, .blue],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    )
-                                )
-                            
-                            Text("Edit Reminder")
-                                .font(.system(size: 24, weight: .bold, design: .rounded))
-                                .foregroundColor(.primary)
-                        }
-                        .padding(.top, 8)
+                        // Removed Header Section as per instructions
                         
                         // Form sections with glass effect
                         VStack(spacing: 20) {
                             // Reminder Details Section
                             ModernFormSection(title: "Reminder Details") {
                                 VStack(spacing: 16) {
-                                    ModernTextField(title: "Reminder Title", text: $title)
+                                    ModernTextField(title: "Reminder Title", text: $title, centered: true)
                                     
                                     if repeatFrequency == .custom {
                                         ModernDatePicker(
                                             title: "Select Time",
                                             selection: $date,
-                                            displayedComponents: [.hourAndMinute]
+                                            displayedComponents: [.hourAndMinute],
+                                            centered: true
                                         )
                                     } else {
                                         ModernDatePicker(
                                             title: "Select Date and Time",
                                             selection: $date,
-                                            displayedComponents: [.date, .hourAndMinute]
+                                            displayedComponents: [.date, .hourAndMinute],
+                                            centered: true
                                         )
                                     }
                                 }
@@ -116,7 +102,7 @@ struct EditReminderView: View {
                             ModernFormSection(title: "Repeat Options") {
                                 VStack(spacing: 16) {
                                     if item.parentReminderID == nil {
-                                        ModernPicker(
+                                        ModernCenteredPicker(
                                             title: "Repeat",
                                             selection: $repeatFrequency,
                                             options: RepeatFrequency.allCases
@@ -212,10 +198,10 @@ struct EditReminderView: View {
                                 }
                             }
                         }
-                        .padding(.bottom, 40)
+                        .padding(.top, 32)
+                        .padding(.horizontal, 20)
+                        .frame(minHeight: geometry.size.height - 100)
                     }
-                    .padding(.horizontal, 20)
-                    .frame(minHeight: geometry.size.height - 100)
                 }
             }
         }
@@ -227,6 +213,15 @@ struct EditReminderView: View {
                     dismiss()
                 }
                 .foregroundColor(.secondary)
+            }
+            
+            ToolbarItem(placement: .principal) {
+                TitleBarView(
+                    title: "Edit Reminder",
+                    iconSystemName: "pencil.circle.fill",
+                    gradientColors: [.purple, .blue],
+                    topPadding: 32
+                )
             }
             
             if hasChanges {
@@ -542,31 +537,8 @@ struct ModernToggleRow: View {
     }
 }
 
-struct ModernInfoRow: View {
-    let title: String
-    let value: String
-    
-    var body: some View {
-        HStack(spacing: 16) {
-            Text(title)
-                .font(.system(size: 14, weight: .medium))
-                .foregroundColor(.secondary)
-            
-            Spacer()
-            
-            Text(value)
-                .font(.system(size: 16, weight: .medium))
-                .foregroundColor(.primary)
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .background {
-            RoundedRectangle(cornerRadius: 12)
-                .fill(.regularMaterial)
-                .stroke(.secondary.opacity(0.3), lineWidth: 1)
-        }
-    }
-}
+
+
 
 #Preview {
     let container = try! ModelContainer(for: Item.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))

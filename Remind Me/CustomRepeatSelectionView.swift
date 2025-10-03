@@ -16,7 +16,22 @@ struct CustomRepeatSelectionView: View {
                     .foregroundStyle(.secondary)
                     .padding(.bottom)
             }
-            .navigationTitle("Select Dates")
+            .navigationTitle("")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    VStack(spacing: 4) {
+                        Text("Select Dates")
+                            .font(.system(size: 40, weight: .bold, design: .rounded))
+                            .foregroundColor(.primary)
+                            .multilineTextAlignment(.center)
+                        Image(systemName: "calendar")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.top, 32)
+                }
+            }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

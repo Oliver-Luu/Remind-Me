@@ -26,7 +26,6 @@ struct RemindersListView: View {
     @State private var isPresentingAddReminder = false
     @State private var selectedItem: Item?
     @State private var editingSeries: SeriesID?
-    @State private var animateGradient = false
 
     private var repeatingSeries: [ReminderSeries] {
         let repeatingItems = items.filter { $0.parentReminderID != nil }
@@ -93,25 +92,26 @@ struct RemindersListView: View {
         GeometryReader { geometry in
             ZStack {
                 // Dynamic animated background
-                RadialGradient(
-                    gradient: Gradient(colors: [
+                CrossingRadialBackground(
+                    colorsA: [
                         Color.orange.opacity(0.15),
                         Color.pink.opacity(0.1),
                         Color.clear
-                    ]),
-                    center: animateGradient ? .bottomLeading : .topTrailing,
+                    ],
+                    colorsB: [
+                        Color.pink.opacity(0.13),
+                        Color.orange.opacity(0.08),
+                        Color.clear
+                    ],
+                    startCenterA: .topTrailing,
+                    endCenterA: .bottomLeading,
+                    startCenterB: .bottomLeading,
+                    endCenterB: .topTrailing,
                     startRadius: 40,
-                    endRadius: 350
+                    endRadius: 350,
+                    duration: 12,
+                    autoreverses: true
                 )
-                .ignoresSafeArea()
-                .onAppear {
-                    withAnimation(
-                        .easeInOut(duration: 12)
-                        .repeatForever(autoreverses: true)
-                    ) {
-                        animateGradient.toggle()
-                    }
-                }
                 
                 Group {
                     if items.isEmpty {
@@ -119,23 +119,7 @@ struct RemindersListView: View {
                     } else {
                         ScrollView {
                             LazyVStack(spacing: 16) {
-                                // Header
-                                VStack(spacing: 8) {
-                                    Image(systemName: "list.bullet.clipboard.fill")
-                                        .font(.system(size: 32, weight: .light))
-                                        .foregroundStyle(
-                                            LinearGradient(
-                                                colors: [.orange, .pink],
-                                                startPoint: .topLeading,
-                                                endPoint: .bottomTrailing
-                                            )
-                                        )
-                                    
-                                    Text("My Reminders")
-                                        .font(.system(size: 24, weight: .bold, design: .rounded))
-                                        .foregroundColor(.primary)
-                                }
-                                .padding(.top, 8)
+                                // Removed header block (icon only to avoid redundant title)
                                 
                                 // Repeating reminders
                                 if !repeatingSeries.isEmpty {
@@ -175,14 +159,24 @@ struct RemindersListView: View {
                                 Color.clear.frame(height: 100)
                             }
                             .padding(.horizontal, 20)
+                            .padding(.top, 32)
                         }
                     }
                 }
             }
         }
-        .navigationTitle("My Reminders")
+        .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            ToolbarItem(placement: .principal) {
+                TitleBarView(
+                    title: "My Reminders",
+                    iconSystemName: "list.bullet.clipboard.fill",
+                    gradientColors: [.orange, .pink],
+                    topPadding: 32
+                )
+            }
+            
             ToolbarItem(placement: .primaryAction) {
                 Button {
                     isPresentingAddReminder = true

@@ -12,7 +12,6 @@ struct ContentView: View {
     @EnvironmentObject private var notificationManager: NotificationManager
     @State private var isPresentingAddReminder = false
     @State private var showingNotificationAlert = false
-    @State private var animateGradient = false
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
@@ -20,30 +19,30 @@ struct ContentView: View {
             GeometryReader { geometry in
                 ZStack {
                     // Dynamic animated background
-                    RadialGradient(
-                        gradient: Gradient(colors: [
+                    CrossingRadialBackground(
                             Color.blue.opacity(0.3),
                             Color.purple.opacity(0.2),
                             Color.clear
-                        ]),
-                        center: animateGradient ? .topLeading : .bottomTrailing,
+                        ],
+                        colorsB: [
+                            Color.purple.opacity(0.4),
+                            Color.blue.opacity(0.28),
+                            Color.clear
+                        ],
+                        startCenterA: .bottomTrailing,
+                        endCenterA: .topLeading,
+                        startCenterB: .topLeading,
+                        endCenterB: .bottomTrailing,
                         startRadius: 50,
-                        endRadius: 400
+                        endRadius: 400,
+                        duration: 8,
+                        autoreverses: true
                     )
-                    .ignoresSafeArea()
-                    .onAppear {
-                        withAnimation(
-                            .easeInOut(duration: 8)
-                            .repeatForever(autoreverses: true)
-                        ) {
-                            animateGradient.toggle()
-                        }
-                    }
                     
                     ScrollView {
                         VStack(spacing: 0) {
                             // Header section with glass effect
-                            HeaderSection()
+                            HeaderSection(screenWidth: geometry.size.width)
                                 .padding(.top, 20)
                             
                             // Time display section
@@ -98,11 +97,32 @@ struct ContentView: View {
 // MARK: - Supporting View Components
 
 struct HeaderSection: View {
+    let screenWidth: CGFloat
+    
+    private var dynamicIconSize: CGFloat {
+        switch screenWidth {
+        case ..<340: return 100
+        case ..<390: return 110
+        case ..<430: return 120
+        case ..<600: return 130
+        default: return 140
+        }
+    }
+    
+    private var dynamicTitleSize: CGFloat {
+        switch screenWidth {
+        case ..<340: return 36
+        case ..<390: return 40
+        case ..<430: return 44
+        case ..<600: return 48
+        default: return 52
+        }
+    }
     
     var body: some View {
         VStack(spacing: 8) {
             Image(systemName: "bell.circle.fill")
-                .font(.system(size: 100, weight: .light))
+                .font(.system(size: dynamicIconSize, weight: .light))
                 .foregroundStyle(
                     LinearGradient(
                         colors: [.blue, .purple],
@@ -123,12 +143,12 @@ struct HeaderSection: View {
                     .blendMode(.screen)
                     .mask(
                         Image(systemName: "bell.circle.fill")
-                            .font(.system(size: 100, weight: .light))
+                            .font(.system(size: dynamicIconSize, weight: .light))
                     )
                 )
             
             Text("iRemindMe")
-                .font(.system(size: 42, weight: .bold, design: .default))
+                .font(.system(size: dynamicTitleSize, weight: .bold, design: .default))
                 .foregroundStyle(
                     LinearGradient(
                         colors: [.blue, .purple],
