@@ -13,6 +13,7 @@ import UserNotifications
 struct Remind_MeApp: App {
     @StateObject private var notificationManager = NotificationManager.shared
     @StateObject private var inAppNotificationManager = InAppNotificationManager()
+    @Environment(\.scenePhase) private var scenePhase
     
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
@@ -46,6 +47,13 @@ struct Remind_MeApp: App {
             }
         }
         .modelContainer(sharedModelContainer)
+        .onChange(of: scenePhase) { oldValue, newValue in
+            if newValue == .active {
+                Task { @MainActor in
+                    NotificationManager.shared.resetBadge(clearDelivered: true)
+                }
+            }
+        }
     }
     
     private func setupNotificationDelegate() {

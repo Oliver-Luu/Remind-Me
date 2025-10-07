@@ -9,6 +9,7 @@ import Foundation
 import UserNotifications
 import SwiftData
 import Combine
+import UIKit
 
 @MainActor
 class NotificationManager: ObservableObject {
@@ -16,12 +17,30 @@ class NotificationManager: ObservableObject {
     
     @Published var authorizationStatus: UNAuthorizationStatus = .notDetermined
     
+    private var currentBadgeCount: Int = 0
+    
     // Track reminders that have persistent notifications active
     private var activePeristentReminders: Set<String> = []
     
     private init() {
         Task {
             await checkAuthorizationStatus()
+        }
+    }
+    
+    /// Reset the app icon badge and optionally clear delivered notifications
+    func resetBadge(clearDelivered: Bool = false) {
+        UNUserNotificationCenter.current().setBadgeCount(0) { error in
+            if let error = error {
+                print("Error resetting badge count: \(error)")
+            } else {
+                Task { @MainActor in
+                    self.currentBadgeCount = 0
+                }
+            }
+        }
+        if clearDelivered {
+            UNUserNotificationCenter.current().removeAllDeliveredNotifications()
         }
     }
     
@@ -74,7 +93,8 @@ class NotificationManager: ObservableObject {
     }
     
     private func scheduleInitialNotification(for item: Item) async {
-        let content = createNotificationContent(for: item, isPersistent: false)
+        currentBadgeCount += 1
+        let content = createNotificationContent(for: item, isPersistent: false, followUpNumber: 0, badge: currentBadgeCount)
         
         // Use a precise time-interval trigger to avoid calendar rounding issues
         let interval = max(1, item.timestamp.timeIntervalSinceNow)
@@ -93,7 +113,8 @@ class NotificationManager: ObservableObject {
     }
 
     private func scheduleImmediateInitialNotification(for item: Item) async {
-        let content = createNotificationContent(for: item, isPersistent: false)
+        currentBadgeCount += 1
+        let content = createNotificationContent(for: item, isPersistent: false, followUpNumber: 0, badge: currentBadgeCount)
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
         let identifier = "reminder_\(item.id)"
         let request = UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
@@ -122,7 +143,8 @@ class NotificationManager: ObservableObject {
             let followUpDate = item.timestamp.addingTimeInterval(intervalSeconds)
             guard followUpDate > Date() else { continue }
 
-            let content = createNotificationContent(for: item, isPersistent: true, followUpNumber: i)
+            currentBadgeCount += 1
+            let content = createNotificationContent(for: item, isPersistent: true, followUpNumber: i, badge: currentBadgeCount)
             let interval = followUpDate.timeIntervalSinceNow
             guard interval > 1 else { continue }
             let trigger = UNTimeIntervalNotificationTrigger(timeInterval: interval, repeats: false)
@@ -138,7 +160,7 @@ class NotificationManager: ObservableObject {
         print("Scheduled \(item.notificationRepeatCount) persistent notifications for: \(item.title)")
     }
     
-    private func createNotificationContent(for item: Item, isPersistent: Bool, followUpNumber: Int = 0) -> UNMutableNotificationContent {
+    private func createNotificationContent(for item: Item, isPersistent: Bool, followUpNumber: Int = 0, badge: Int? = nil) -> UNMutableNotificationContent {
         let content = UNMutableNotificationContent()
         
         if isPersistent {
@@ -168,7 +190,6 @@ class NotificationManager: ObservableObject {
             content.sound = .default
         }
         
-        content.badge = 1
         
         // Add custom data to identify the reminder
         content.userInfo = [
@@ -202,6 +223,10 @@ class NotificationManager: ObservableObject {
         UNUserNotificationCenter.current().setNotificationCategories([category])
         content.categoryIdentifier = "REMINDER_CATEGORY"
         
+        if let badge = badge {
+            content.badge = NSNumber(value: max(0, badge))
+        }
+        
         return content
     }
     
@@ -209,6 +234,7 @@ class NotificationManager: ObservableObject {
     func cancelNotification(for item: Item) async {
         await cancelAllNotificationsForReminder(reminderID: item.id)
         print("Cancelled all notifications for: \(item.title)")
+        resetBadge()
     }
     
     /// Cancel persistent notifications for a specific reminder
@@ -220,6 +246,7 @@ class NotificationManager: ObservableObject {
             center.removePendingNotificationRequests(withIdentifiers: ids)
             activePeristentReminders.remove(reminderID)
             print("Cancelled persistent notifications for reminder: \(reminderID)")
+            await MainActor.run { self.resetBadge() }
         }
     }
     
@@ -240,6 +267,7 @@ class NotificationManager: ObservableObject {
 
         activePeristentReminders.remove(reminderID)
         print("Cancelled all notifications (pending and delivered) for reminder: \(reminderID)")
+        resetBadge()
     }
     
     /// Schedule notifications for multiple reminders
@@ -260,6 +288,9 @@ class NotificationManager: ObservableObject {
         let content = UNMutableNotificationContent()
         content.title = "Test Notification"
         content.body = "This is a test notification from Settings."
+
+        currentBadgeCount += 1
+        content.badge = NSNumber(value: currentBadgeCount)
 
         // Read push sound preference from UserDefaults (same as normal notifications)
         let pushKey = UserDefaults.standard.string(forKey: "settings.pushSound") ?? "default"
@@ -289,6 +320,7 @@ class NotificationManager: ObservableObject {
         do {
             try await UNUserNotificationCenter.current().add(request)
             print("Scheduled test notification")
+            resetBadge()
         } catch {
             print("Error scheduling test notification: \(error)")
         }
@@ -340,6 +372,7 @@ class NotificationManager: ObservableObject {
                 await cancelAllNotificationsForReminder(reminderID: reminderID)
                 
                 print("Marked reminder complete and cancelled all notifications: \(item.title)")
+                resetBadge()
             }
         } catch {
             print("Error marking reminder complete: \(error)")
@@ -373,6 +406,7 @@ class NotificationManager: ObservableObject {
                 // Schedule notification for the snoozed reminder
                 await scheduleNotification(for: snoozeReminder)
                 print("Snoozed reminder (keeping series membership if applicable) and deleted original: \(snoozeReminder.title)")
+                resetBadge()
             }
         } catch {
             print("Error snoozing reminder: \(error)")
@@ -411,11 +445,13 @@ class NotificationManager: ObservableObject {
     /// Call this method when a reminder is marked as completed from the UI
     func handleReminderCompleted(_ item: Item) async {
         await cancelAllNotificationsForReminder(reminderID: item.id)
+        resetBadge()
     }
     
     /// Call this method when a reminder is deleted from the UI
     func handleReminderDeleted(_ item: Item) async {
         await cancelAllNotificationsForReminder(reminderID: item.id)
+        resetBadge()
     }
 }
 
