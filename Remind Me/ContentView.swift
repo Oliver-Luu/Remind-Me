@@ -310,14 +310,20 @@ struct ActionButtonsSection: View {
                     Text("My Reminders")
                         .font(.system(size: 18, weight: .semibold, design: .rounded))
                 }
-                .foregroundColor(.primary)
+                .foregroundColor(.white)
                 .frame(maxWidth: .infinity)
                 .padding(.horizontal, 20)
                 .padding(.vertical, 16)
                 .background {
                     RoundedRectangle(cornerRadius: 16)
-                        .fill(.regularMaterial)
-                        .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 4)
+                        .fill(
+                            LinearGradient(
+                                colors: [.orange, .pink],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .shadow(color: .blue.opacity(0.3), radius: 12, x: 0, y: 6)
                 }
             }
             .simultaneousGesture(
@@ -353,14 +359,20 @@ struct ActionButtonsSection: View {
                     Text("Calendar View")
                         .font(.system(size: 18, weight: .semibold, design: .rounded))
                 }
-                .foregroundColor(.primary)
+                .foregroundColor(.white)
                 .frame(maxWidth: .infinity)
                 .padding(.horizontal, 20)
                 .padding(.vertical, 16)
                 .background {
                     RoundedRectangle(cornerRadius: 16)
-                        .fill(.regularMaterial)
-                        .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 4)
+                        .fill(
+                            LinearGradient(
+                                colors: [.teal, .blue],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .shadow(color: .blue.opacity(0.3), radius: 12, x: 0, y: 6)
                 }
             }
             .simultaneousGesture(
@@ -408,7 +420,7 @@ struct ActionButtonsSection: View {
                     RoundedRectangle(cornerRadius: 16)
                         .fill(
                             LinearGradient(
-                                colors: [.blue, .purple],
+                                colors: [.green, .blue],
                                 startPoint: .leading,
                                 endPoint: .trailing
                             )
