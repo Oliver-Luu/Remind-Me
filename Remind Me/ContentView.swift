@@ -7,6 +7,7 @@
 
 import SwiftUI
 import SwiftData
+import UIKit
 
 struct ContentView: View {
     @EnvironmentObject private var notificationManager: NotificationManager
@@ -96,7 +97,6 @@ struct ContentView: View {
             } message: {
                 Text("To receive reminder notifications, please enable notifications in Settings. You can still create reminders without notifications.")
             }
-            .buttonStyle(HapticButtonStyle())
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
                     NavigationLink {
@@ -431,6 +431,7 @@ struct ActionButtonsSection: View {
                         .shadow(color: .blue.opacity(0.3), radius: 12, x: 0, y: 6)
                 }
             }
+            .buttonStyle(HapticButtonStyle())
             .scaleEffect(addButtonScale)
             .onTapGesture {
                 withAnimation(.easeInOut(duration: 0.1)) {
@@ -442,6 +443,54 @@ struct ActionButtonsSection: View {
             }
         }
         .padding(.horizontal, 24)
+    }
+}
+
+private struct InteractivePopGestureEnabler: UIViewRepresentable {
+    final class PopEnablerView: UIView {
+        override func didMoveToWindow() {
+            super.didMoveToWindow()
+            enablePopGesture()
+        }
+
+        override func didMoveToSuperview() {
+            super.didMoveToSuperview()
+            enablePopGesture()
+        }
+
+        private func enablePopGesture() {
+            guard let nav = findNavigationController(from: self) else { return }
+            if let gesture = nav.interactivePopGestureRecognizer {
+                gesture.isEnabled = true
+                gesture.delegate = nil
+            }
+        }
+
+        private func findNavigationController(from view: UIView) -> UINavigationController? {
+            // Walk the responder chain to find a UINavigationController
+            var responder: UIResponder? = view
+            while let r = responder {
+                if let nav = (r as? UIViewController)?.navigationController {
+                    return nav
+                }
+                if let nav = r as? UINavigationController {
+                    return nav
+                }
+                responder = r.next
+            }
+            return nil
+        }
+    }
+
+    func makeUIView(context: Context) -> UIView {
+        let v = PopEnablerView(frame: .zero)
+        v.isUserInteractionEnabled = false
+        v.backgroundColor = .clear
+        return v
+    }
+
+    func updateUIView(_ uiView: UIView, context: Context) {
+        // Nothing to update; lifecycle hooks handle enabling the gesture.
     }
 }
 
@@ -461,8 +510,10 @@ private struct BackHapticToolbar: ViewModifier {
                         Image(systemName: "chevron.left")
                             .font(.system(size: 17, weight: .semibold))
                     }
+                    .buttonStyle(.plain)
                 }
             }
+            .background(InteractivePopGestureEnabler())
     }
 }
 
@@ -472,4 +523,3 @@ private struct BackHapticToolbar: ViewModifier {
         .environmentObject(InAppNotificationManager())
         .modelContainer(for: Item.self, inMemory: true)
 }
-
