@@ -22,6 +22,16 @@ struct InAppNotificationView: View {
         case slideLeft
     }
     
+    private func dynamicNotificationTitleSize(for width: CGFloat) -> CGFloat {
+        switch width {
+        case ..<340: return 18
+        case ..<390: return 19
+        case ..<430: return 20
+        case ..<600: return 21
+        default: return 22
+        }
+    }
+    
     var body: some View {
         if inAppNotificationManager.showingNotification && !inAppNotificationManager.activeNotifications.isEmpty {
             VStack(spacing: 0) {
@@ -89,10 +99,13 @@ struct InAppNotificationView: View {
                             // Reminder details
                             VStack(alignment: .center, spacing: 12) {
                                 Text(currentReminder.title)
-                                    .font(.system(size: 20, weight: .semibold, design: .rounded))
+                                    .font(.system(size: dynamicNotificationTitleSize(for: UIScreen.main.bounds.width), weight: .semibold, design: .rounded))
                                     .foregroundColor(.primary)
                                     .multilineTextAlignment(.center)
-                                    .lineLimit(3)
+                                    .lineLimit(2)
+                                    .truncationMode(.tail)
+                                    .minimumScaleFactor(0.9)
+                                    .allowsTightening(true)
                                 
                                 VStack(spacing: 8) {
                                     Label {
@@ -185,6 +198,7 @@ struct InAppNotificationView: View {
     
     private var modernCompleteButton: some View {
         Button {
+            Haptics.impact(.light)
             completeCurrentReminder()
         } label: {
             HStack(spacing: 8) {
@@ -207,6 +221,7 @@ struct InAppNotificationView: View {
                     )
             }
         }
+        .buttonStyle(HapticButtonStyle())
     }
     
     private var modernSnoozeMenu: some View {
@@ -238,10 +253,12 @@ struct InAppNotificationView: View {
                     )
             }
         }
+        .buttonStyle(HapticButtonStyle())
     }
     
     private var modernNextButton: some View {
         Button {
+            Haptics.selectionChanged()
             showNextNotification()
         } label: {
             HStack(spacing: 8) {
@@ -259,10 +276,12 @@ struct InAppNotificationView: View {
                     .stroke(.secondary.opacity(0.3), lineWidth: 1)
             }
         }
+        .buttonStyle(HapticButtonStyle())
     }
     
     private var modernCompleteAllButton: some View {
         Button {
+            Haptics.selectionChanged()
             completeAllNotifications()
         } label: {
             HStack(spacing: 8) {
@@ -285,11 +304,13 @@ struct InAppNotificationView: View {
                     )
             }
         }
+        .buttonStyle(HapticButtonStyle())
     }
     
     // MARK: - Helper Methods
 
     private func completeAllNotifications() {
+        Haptics.selectionChanged()
         // Complete all active reminders using the manager
         let toComplete = inAppNotificationManager.activeNotifications
         guard !toComplete.isEmpty else { return }
@@ -316,6 +337,7 @@ struct InAppNotificationView: View {
     }
     
     private func completeCurrentReminder() {
+        Haptics.impact(.light)
         guard currentIndex < inAppNotificationManager.activeNotifications.count else { return }
         let reminder = inAppNotificationManager.activeNotifications[currentIndex]
         
@@ -337,6 +359,7 @@ struct InAppNotificationView: View {
     }
     
     private func snoozeCurrentReminder(minutes: Int) {
+        Haptics.selectionChanged()
         guard currentIndex < inAppNotificationManager.activeNotifications.count else { return }
         let reminder = inAppNotificationManager.activeNotifications[currentIndex]
         
@@ -358,6 +381,7 @@ struct InAppNotificationView: View {
     }
     
     private func showNextNotification() {
+        Haptics.selectionChanged()
         if currentIndex < inAppNotificationManager.activeNotifications.count - 1 {
             currentIndex += 1
         } else {

@@ -96,6 +96,9 @@ struct EditReminderView: View {
                                     isOn: $isCompleted,
                                     icon: isCompleted ? "checkmark.circle.fill" : "circle"
                                 )
+                                .onChange(of: isCompleted) { _, _ in
+                                    Haptics.selectionChanged()
+                                }
                             }
                             
                             // Repeat Options Section
@@ -109,12 +112,15 @@ struct EditReminderView: View {
                                         ) { frequency in
                                             Text(frequency.displayName).tag(frequency)
                                         }
+                                        .onChange(of: repeatFrequency) { _, _ in
+                                            Haptics.selectionChanged()
+                                        }
                                         
                                         if repeatFrequency == .custom {
                                             ModernActionRow(
                                                 title: "Choose dates",
                                                 icon: "calendar",
-                                                action: { showCustomDatePicker = true }
+                                                action: { Haptics.selectionChanged(); showCustomDatePicker = true }
                                             )
                                             
                                             ModernStatusRow(
@@ -180,6 +186,9 @@ struct EditReminderView: View {
                                     ) { minutes in
                                         Text("\(minutes) min").tag(minutes)
                                     }
+                                    .onChange(of: notificationIntervalMinutes) { _, _ in
+                                        Haptics.selectionChanged()
+                                    }
                                     
                                     ModernStepper(
                                         title: "Follow-up count",
@@ -187,6 +196,9 @@ struct EditReminderView: View {
                                         range: 0...30,
                                         suffix: "follow-up\(notificationRepeatCount == 1 ? "" : "s")"
                                     )
+                                    .onChange(of: notificationRepeatCount) { _, _ in
+                                        Haptics.selectionChanged()
+                                    }
                                     
                                     if notificationRepeatCount == 0 {
                                         ModernStatusRow(
@@ -210,6 +222,7 @@ struct EditReminderView: View {
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
                 Button("Cancel") {
+                    Haptics.selectionChanged()
                     dismiss()
                 }
                 .foregroundColor(.secondary)
@@ -227,6 +240,7 @@ struct EditReminderView: View {
             if hasChanges {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
+                        Haptics.impact(.medium)
                         saveChanges()
                     }
                     .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
@@ -237,6 +251,7 @@ struct EditReminderView: View {
             
             ToolbarItem(placement: .bottomBar) {
                 Button(role: .destructive) {
+                    Haptics.warning()
                     Task {
                         await NotificationManager.shared.handleReminderDeleted(item)
                     }
@@ -553,3 +568,4 @@ struct ModernToggleRow: View {
     }
     .modelContainer(container)
 }
+

@@ -149,7 +149,25 @@ class NotificationManager: ObservableObject {
             content.body = item.title
         }
         
-        content.sound = .default
+        // Read push sound preference from UserDefaults
+        let pushKey = UserDefaults.standard.string(forKey: "settings.pushSound") ?? "default"
+        switch pushKey {
+        case "none":
+            content.sound = nil
+        case "bundled":
+            if Bundle.main.url(forResource: "reminder", withExtension: "caf") != nil {
+                content.sound = UNNotificationSound(named: UNNotificationSoundName("reminder.caf"))
+            } else if Bundle.main.url(forResource: "reminder", withExtension: "wav") != nil {
+                content.sound = UNNotificationSound(named: UNNotificationSoundName("reminder.wav"))
+            } else if Bundle.main.url(forResource: "reminder", withExtension: "mp3") != nil {
+                content.sound = UNNotificationSound(named: UNNotificationSoundName("reminder.mp3"))
+            } else {
+                content.sound = .default
+            }
+        default:
+            content.sound = .default
+        }
+        
         content.badge = 1
         
         // Add custom data to identify the reminder
@@ -228,6 +246,51 @@ class NotificationManager: ObservableObject {
     func scheduleNotifications(for items: [Item]) async {
         for item in items {
             await scheduleNotification(for: item)
+        }
+    }
+    
+    /// Schedule a one-off test notification for Settings
+    func scheduleTestNotification() async {
+        // Proceed if not denied; allow authorized, provisional, and ephemeral statuses
+        guard authorizationStatus != .denied else {
+            print("Notifications denied by user")
+            return
+        }
+
+        let content = UNMutableNotificationContent()
+        content.title = "Test Notification"
+        content.body = "This is a test notification from Settings."
+
+        // Read push sound preference from UserDefaults (same as normal notifications)
+        let pushKey = UserDefaults.standard.string(forKey: "settings.pushSound") ?? "default"
+        switch pushKey {
+        case "none":
+            content.sound = nil
+        case "bundled":
+            if Bundle.main.url(forResource: "reminder", withExtension: "caf") != nil {
+                content.sound = UNNotificationSound(named: UNNotificationSoundName("reminder.caf"))
+            } else if Bundle.main.url(forResource: "reminder", withExtension: "wav") != nil {
+                content.sound = UNNotificationSound(named: UNNotificationSoundName("reminder.wav"))
+            } else if Bundle.main.url(forResource: "reminder", withExtension: "mp3") != nil {
+                content.sound = UNNotificationSound(named: UNNotificationSoundName("reminder.mp3"))
+            } else {
+                content.sound = .default
+            }
+        default:
+            content.sound = .default
+        }
+        // Mark as a test so we can present banners/sounds in the foreground
+        content.userInfo["isTest"] = true
+
+        // Deliver immediately (no trigger)
+        let identifier = "test_notification_\(UUID().uuidString)"
+        let request = UNNotificationRequest(identifier: identifier, content: content, trigger: nil)
+
+        do {
+            try await UNUserNotificationCenter.current().add(request)
+            print("Scheduled test notification")
+        } catch {
+            print("Error scheduling test notification: \(error)")
         }
     }
     

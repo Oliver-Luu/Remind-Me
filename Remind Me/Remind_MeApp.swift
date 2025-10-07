@@ -77,13 +77,20 @@ class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
     // Handle notification when app is in foreground
     func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
         print("DEBUG: System notification firing while app in foreground")
-        // When app is in foreground, show in-app notification instead of system banner
+        // If this is a test notification, present as a normal system banner with sound and badge
+        let isTest = (notification.request.content.userInfo["isTest"] as? Bool) == true
+                  || notification.request.identifier.hasPrefix("test_notification_")
+        if isTest {
+            completionHandler([.banner, .sound, .badge])
+            return
+        }
+
+        // For regular reminders, show in-app notification and avoid system banner/sound
         Task { @MainActor in
             await triggerInAppNotification(from: notification)
         }
-        
-        // Still play sound and show badge
-        completionHandler([.banner, .list, .sound, .badge])
+        // Still show badge only, no system banner or sound
+        completionHandler([.badge])
     }
     
     // Handle notification actions

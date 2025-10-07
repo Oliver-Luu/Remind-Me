@@ -97,6 +97,9 @@ struct AddReminderView: View {
                                     ) { frequency in
                                         Text(frequency.displayName).tag(frequency)
                                     }
+                                    .onChange(of: repeatFrequency) { _, _ in
+                                        Haptics.selectionChanged()
+                                    }
                                     
                                     if repeatFrequency != .none && repeatFrequency != .custom {
                                         ModernStepper(
@@ -124,7 +127,7 @@ struct AddReminderView: View {
                                         ModernActionRow(
                                             title: "Choose dates",
                                             icon: "calendar",
-                                            action: { showCustomDatePicker = true }
+                                            action: { Haptics.selectionChanged(); showCustomDatePicker = true }
                                         )
                                         
                                         ModernStatusRow(
@@ -156,6 +159,9 @@ struct AddReminderView: View {
                                     ) { minutes in
                                         Text("\(minutes) min").tag(minutes)
                                     }
+                                    .onChange(of: notificationIntervalMinutes) { _, _ in
+                                        Haptics.selectionChanged()
+                                    }
                                     
                                     ModernStepper(
                                         title: "Follow-up count",
@@ -186,12 +192,14 @@ struct AddReminderView: View {
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
                 Button("Cancel") {
+                    Haptics.selectionChanged()
                     dismiss()
                 }
                 .foregroundColor(.secondary)
             }
             ToolbarItem(placement: .confirmationAction) {
                 Button("Save") {
+                    Haptics.impact(.medium)
                     save()
                 }
                 .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
@@ -204,7 +212,7 @@ struct AddReminderView: View {
                     iconSystemName: "plus.circle.fill",
                     gradientColors: [.green, .blue],
                     topPadding: 32,
-                    fontScale: 0.95
+                    fontScale: 0.85
                 )
             }
         }

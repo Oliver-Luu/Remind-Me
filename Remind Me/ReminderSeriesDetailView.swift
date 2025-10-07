@@ -101,7 +101,7 @@ struct ReminderSeriesDetailView: View {
                         Color.clear.frame(height: 120)
                     }
                     .padding(.horizontal, 20)
-                    .padding(.top, 1) // Small top padding to ensure content isn't clipped
+                    .padding(.top, 32) // Small top padding to ensure content isn't clipped
                 }
                 .scrollIndicators(.visible) // Make sure scroll indicators are visible
             }
@@ -144,7 +144,8 @@ struct ReminderSeriesDetailView: View {
                     title: seriesTitle,
                     iconSystemName: "repeat.circle.fill",
                     gradientColors: [.teal, .blue],
-                    topPadding: 32
+                    topPadding: 32,
+                    fontScale: seriesTitleScale
                 )
             }
         }
@@ -188,6 +189,21 @@ struct ReminderSeriesDetailView: View {
     private var seriesTitle: String {
         if let first = items.first { return first.title }
         return "Repeating Reminder"
+    }
+    private var seriesTitleScale: CGFloat {
+        let width = UIScreen.main.bounds.width
+        let limit: Int
+        switch width {
+        case ..<340: limit = 12
+        case ..<390: limit = 16
+        case ..<430: limit = 18
+        case ..<600: limit = 22
+        default: limit = 26
+        }
+        let over = max(0, seriesTitle.count - limit)
+        if over == 0 { return 1.0 }
+        else if over <= 6 { return 0.92 }
+        else { return 0.86 }
     }
 
     private var upcomingItems: [Item] {
@@ -284,6 +300,16 @@ struct ReminderDetailCard: View {
     @State private var offsetX: CGFloat = 0
     @State private var startOffsetX: CGFloat = 0
     private let revealWidth: CGFloat = 88
+
+    private func dynamicDetailTitleSize(for width: CGFloat) -> CGFloat {
+        switch width {
+        case ..<340: return 14.5
+        case ..<390: return 15.5
+        case ..<430: return 16
+        case ..<600: return 17
+        default: return 18
+        }
+    }
     
     var body: some View {
         ZStack(alignment: .trailing) {
@@ -330,10 +356,13 @@ struct ReminderDetailCard: View {
                 // Content area (tappable for edit across the whole card)
                 VStack(alignment: .leading, spacing: 6) {
                     Text(item.title)
-                        .font(.system(size: 16, weight: .semibold, design: .rounded))
+                        .font(.system(size: dynamicDetailTitleSize(for: UIScreen.main.bounds.width), weight: .semibold, design: .rounded))
                         .foregroundColor(.primary)
                         .strikethrough(item.isCompleted)
-                        .multilineTextAlignment(.leading)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                        .minimumScaleFactor(0.85)
+                        .allowsTightening(true)
                     
                     HStack(spacing: 8) {
                         Label {
@@ -486,4 +515,3 @@ struct ReminderDetailCard: View {
     return NavigationStack { ReminderSeriesDetailView(parentID: parent) }
         .modelContainer(container)
 }
-

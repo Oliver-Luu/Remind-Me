@@ -175,10 +175,14 @@ struct RemindersListView: View {
                     gradientColors: [.orange, .pink],
                     topPadding: 32
                 )
+                .simultaneousGesture(TapGesture().onEnded {
+                    Haptics.selectionChanged()
+                })
             }
             
             ToolbarItem(placement: .primaryAction) {
                 Button {
+                    Haptics.impact(.medium)
                     isPresentingAddReminder = true
                 } label: {
                     Image(systemName: "plus")
@@ -339,6 +343,7 @@ struct EmptyStateView: View {
                 }
                 
                 Button {
+                    Haptics.impact(.light)
                     isPresentingAddReminder = true
                 } label: {
                     HStack(spacing: 12) {
@@ -428,6 +433,16 @@ struct ReminderSeriesCard: View {
     @State private var offsetX: CGFloat = 0
     @State private var startOffsetX: CGFloat = 0
     private let revealWidth: CGFloat = 88
+
+    private func dynamicTitleSize(for width: CGFloat) -> CGFloat {
+        switch width {
+        case ..<340: return 16
+        case ..<390: return 17
+        case ..<430: return 18
+        case ..<600: return 19
+        default: return 20
+        }
+    }
     
     var body: some View {
         ZStack(alignment: .trailing) {
@@ -435,6 +450,7 @@ struct ReminderSeriesCard: View {
             HStack(spacing: 0) {
                 Spacer()
                 Button(role: .destructive) {
+                    Haptics.warning()
                     withAnimation(.easeInOut(duration: 0.2)) { isRemoving = true }
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.22) {
                         Task {
@@ -475,9 +491,13 @@ struct ReminderSeriesCard: View {
                         
                         VStack(alignment: .leading, spacing: 2) {
                             Text(series.title)
-                                .font(.system(size: 18, weight: .semibold, design: .rounded))
+                                .font(.system(size: dynamicTitleSize(for: UIScreen.main.bounds.width), weight: .semibold, design: .rounded))
                                 .foregroundColor(.primary)
                                 .strikethrough(series.allCompleted)
+                                .lineLimit(1)
+                                .truncationMode(.tail)
+                                .minimumScaleFactor(0.85)
+                                .allowsTightening(true)
                             
                             Text(series.repeatFrequency.display(interval: series.items.first?.repeatInterval ?? 1))
                                 .font(.system(size: 14, weight: .medium))
@@ -563,16 +583,19 @@ struct ReminderSeriesCard: View {
         .scaleEffect(cardScale)
         .contextMenu {
             Button("Edit Series") {
+                Haptics.selectionChanged()
                 editingSeries = SeriesID(id: series.id)
             }
 
             Button("Add Next Occurrence") {
+                Haptics.selectionChanged()
                 if let last = series.items.sorted(by: { $0.timestamp < $1.timestamp }).last {
                     addNextOccurrence(for: last, modelContext: modelContext)
                 }
             }
 
             Button("Remove Future Occurrences", role: .destructive) {
+                Haptics.warning()
                 Task {
                     if let pivot = series.nextUpcoming ?? series.items.sorted(by: { $0.timestamp < $1.timestamp }).last {
                         await removeAllFutureOccurrences(for: pivot, modelContext: modelContext)
@@ -583,6 +606,7 @@ struct ReminderSeriesCard: View {
             Divider()
 
             Button("Delete Series", role: .destructive) {
+                Haptics.warning()
                 withAnimation(.easeInOut(duration: 0.2)) { isRemoving = true }
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.22) {
                     Task {
@@ -632,6 +656,16 @@ struct ReminderItemCard: View {
     @State private var offsetX: CGFloat = 0
     @State private var startOffsetX: CGFloat = 0
     private let revealWidth: CGFloat = 88
+
+    private func dynamicItemTitleSize(for width: CGFloat) -> CGFloat {
+        switch width {
+        case ..<340: return 14.5
+        case ..<390: return 15.5
+        case ..<430: return 16
+        case ..<600: return 17
+        default: return 18
+        }
+    }
     
     var body: some View {
         ZStack(alignment: .trailing) {
@@ -639,6 +673,7 @@ struct ReminderItemCard: View {
             HStack(spacing: 0) {
                 Spacer()
                 Button(role: .destructive) {
+                    Haptics.warning()
                     withAnimation(.easeInOut(duration: 0.2)) { isRemoving = true }
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.22) {
                         Task { await NotificationManager.shared.handleReminderDeleted(item) }
@@ -669,6 +704,7 @@ struct ReminderItemCard: View {
                 // Completion button
                 Button {
                     toggleCompletion(for: item)
+                    Haptics.selectionChanged()
                 } label: {
                     Image(systemName: item.isCompleted ? "checkmark.circle.fill" : "circle")
                         .font(.system(size: 24, weight: .medium))
@@ -682,10 +718,13 @@ struct ReminderItemCard: View {
                 } label: {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(item.title)
-                            .font(.system(size: 16, weight: .semibold, design: .rounded))
+                            .font(.system(size: dynamicItemTitleSize(for: UIScreen.main.bounds.width), weight: .semibold, design: .rounded))
                             .foregroundColor(.primary)
                             .strikethrough(item.isCompleted)
-                            .multilineTextAlignment(.leading)
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                            .minimumScaleFactor(0.85)
+                            .allowsTightening(true)
                         
                         Text(formatted(date: item.timestamp))
                             .font(.system(size: 14, weight: .medium))
@@ -699,6 +738,7 @@ struct ReminderItemCard: View {
                 // Inline delete button (still shown when completed)
                 if item.isCompleted {
                     Button(role: .destructive) {
+                        Haptics.warning()
                         withAnimation(.easeInOut(duration: 0.2)) { isRemoving = true }
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.22) {
                             Task { await NotificationManager.shared.handleReminderDeleted(item) }
@@ -765,6 +805,7 @@ struct ReminderItemCard: View {
             Button("Edit") { selectedItem = item }
             Divider()
             Button("Delete", role: .destructive) {
+                Haptics.warning()
                 withAnimation(.easeInOut(duration: 0.2)) { isRemoving = true }
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.22) {
                     Task { await NotificationManager.shared.handleReminderDeleted(item) }

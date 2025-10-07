@@ -211,6 +211,7 @@ public struct GradientButton: View {
                     }
                 }
         )
+        .buttonStyle(HapticButtonStyle())
     }
 }
 
@@ -350,6 +351,9 @@ struct ModernDatePicker: View {
                 Spacer()
                 DatePicker("", selection: $selection, displayedComponents: displayedComponents)
                     .datePickerStyle(.compact)
+                    .onChange(of: selection) { _, _ in
+                        Haptics.selectionChanged()
+                    }
                     .fixedSize()
                 Spacer()
             }
@@ -389,6 +393,9 @@ struct ModernPicker<T: Hashable, Content: View>: View {
                 }
             }
             .pickerStyle(.menu)
+            .onChange(of: selection) { _, _ in
+                Haptics.selectionChanged()
+            }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
             .background {
@@ -426,6 +433,9 @@ struct ModernCenteredPicker<T: Hashable, Content: View>: View {
                 }
             }
             .pickerStyle(.menu)
+            .onChange(of: selection) { _, _ in
+                Haptics.selectionChanged()
+            }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
             .background {
@@ -460,6 +470,7 @@ struct ModernStepper: View {
                 Button {
                     if value > range.lowerBound {
                         value -= 1
+                        Haptics.selectionChanged()
                     }
                 } label: {
                     Image(systemName: "minus")
@@ -492,6 +503,7 @@ struct ModernStepper: View {
                 Button {
                     if value < range.upperBound {
                         value += 1
+                        Haptics.selectionChanged()
                     }
                 } label: {
                     Image(systemName: "plus")
@@ -547,6 +559,7 @@ struct ModernActionRow: View {
                     .stroke(.secondary.opacity(0.3), lineWidth: 1)
             }
         }
+        .buttonStyle(HapticButtonStyle())
     }
 }
 
@@ -614,4 +627,3 @@ private extension View {
         }
     }
 }
-

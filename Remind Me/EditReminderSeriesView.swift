@@ -180,12 +180,14 @@ struct EditReminderSeriesView: View {
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
                 Button("Cancel") { 
+                    Haptics.selectionChanged()
                     dismiss() 
                 }
                 .foregroundColor(.secondary)
             }
             ToolbarItem(placement: .confirmationAction) {
                 Button("Save") { 
+                    Haptics.impact(.medium)
                     save() 
                 }
                 .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || (!hasChanges && !selectionModified))
@@ -205,6 +207,7 @@ struct EditReminderSeriesView: View {
             }
             ToolbarItem(placement: .bottomBar) {
                 Button(role: .destructive) {
+                    Haptics.warning()
                     Task { await deleteSeries() }
                 } label: {
                     HStack(spacing: 6) {
@@ -259,21 +262,25 @@ struct EditReminderSeriesView: View {
                     customSelectedDates = normalized
                 }
                 selectionModified = true
+                Haptics.selectionChanged()
             }
         }
         .confirmationDialog("Repeat", isPresented: $showRepeatDialog, titleVisibility: .visible) {
             ForEach(RepeatFrequency.allCases.filter { $0 != .none }, id: \.self) { frequency in
-                Button(frequency.displayName) { repeatFrequency = frequency }
+                Button(frequency.displayName) { 
+                    Haptics.selectionChanged()
+                    repeatFrequency = frequency 
+                }
             }
             Button("Cancel", role: .cancel) { }
         }
         .confirmationDialog("Follow-up interval", isPresented: $showFollowupDialog, titleVisibility: .visible) {
-            Button("1 min") { notificationIntervalMinutes = 1 }
-            Button("2 min") { notificationIntervalMinutes = 2 }
-            Button("5 min") { notificationIntervalMinutes = 5 }
-            Button("10 min") { notificationIntervalMinutes = 10 }
-            Button("15 min") { notificationIntervalMinutes = 15 }
-            Button("30 min") { notificationIntervalMinutes = 30 }
+            Button("1 min") { Haptics.selectionChanged(); notificationIntervalMinutes = 1 }
+            Button("2 min") { Haptics.selectionChanged(); notificationIntervalMinutes = 2 }
+            Button("5 min") { Haptics.selectionChanged(); notificationIntervalMinutes = 5 }
+            Button("10 min") { Haptics.selectionChanged(); notificationIntervalMinutes = 10 }
+            Button("15 min") { Haptics.selectionChanged(); notificationIntervalMinutes = 15 }
+            Button("30 min") { Haptics.selectionChanged(); notificationIntervalMinutes = 30 }
             Button("Cancel", role: .cancel) { }
         }
         .alert("Delete Series", isPresented: $showDeleteSeriesError) {
@@ -576,4 +583,3 @@ struct ModernSelectionRow: View {
     return NavigationStack { EditReminderSeriesView(parentID: parent) }
         .modelContainer(container)
 }
-

@@ -37,9 +37,24 @@ public struct TitleBarView: View {
             return 40
         }
     }
+    private var autoScale: CGFloat {
+        let width = UIScreen.main.bounds.width
+        let limit: Int
+        switch width {
+        case ..<340: limit = 12
+        case ..<390: limit = 16
+        case ..<430: limit = 18
+        case ..<600: limit = 22
+        default: limit = 26
+        }
+        let over = max(0, title.count - limit)
+        if over == 0 { return 1.0 }
+        else if over <= 6 { return 0.96 }
+        else { return 0.92 }
+    }
 
     public var body: some View {
-        let titleSize = dynamicFontSize * fontScale
+        let titleSize = dynamicFontSize * fontScale * autoScale
         let iconSize = max(14, titleSize * 0.4 * iconScale)
         VStack(spacing: 4) {
             Text(title)
@@ -48,6 +63,8 @@ public struct TitleBarView: View {
                 .multilineTextAlignment(.center)
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
+                .truncationMode(.tail)
+                .allowsTightening(true)
             Image(systemName: iconSystemName)
                 .font(.system(size: iconSize, weight: .medium))
                 .foregroundStyle(
@@ -61,3 +78,4 @@ public struct TitleBarView: View {
         .padding(.top, topPadding)
     }
 }
+
