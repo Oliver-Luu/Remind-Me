@@ -57,14 +57,6 @@ final class NotificationSoundPlayer: NSObject, AVAudioPlayerDelegate {
         }
     }
 
-    private func bundledReminderSoundURL() -> URL? {
-        let bundle = Bundle.main
-        if let url = bundle.url(forResource: "reminder", withExtension: "caf") { return url }
-        if let url = bundle.url(forResource: "reminder", withExtension: "wav") { return url }
-        if let url = bundle.url(forResource: "reminder", withExtension: "mp3") { return url }
-        return nil
-    }
-
     private func bundledSoundURL(forKey key: String) -> URL? {
         let candidates: [String]
         switch key {
@@ -74,9 +66,6 @@ final class NotificationSoundPlayer: NSObject, AVAudioPlayerDelegate {
             candidates = ["tritone", "tri_tone", "tri-tone", "reminder"]
         case "bell":
             candidates = ["bell", "reminder"]
-        case "bundled":
-            // Legacy option points to the generic reminder file
-            candidates = ["reminder"]
         default:
             candidates = ["reminder"]
         }

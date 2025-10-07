@@ -220,11 +220,10 @@ struct SettingsView: View {
                             ModernFormSection(title: "Haptics") {
                                 VStack(spacing: 16) {
                                     Menu {
-                                        Button("System default") { hapticsLevel = HapticLevel.system.rawValue; Haptics.impact(.light) }
+                                        Button("Off") { hapticsLevel = HapticLevel.off.rawValue; Haptics.impact(.light) }
                                         Button("Light") { hapticsLevel = HapticLevel.light.rawValue; Haptics.impact(.light) }
                                         Button("Medium") { hapticsLevel = HapticLevel.medium.rawValue; Haptics.impact(.light) }
                                         Button("Heavy") { hapticsLevel = HapticLevel.heavy.rawValue; Haptics.impact(.light) }
-                                        Button("Off") { hapticsLevel = HapticLevel.off.rawValue; Haptics.impact(.light) }
                                     } label: {
                                         HStack(spacing: 16) {
                                             Text("Feedback Level")
@@ -257,14 +256,14 @@ struct SettingsView: View {
                                             case .off:
                                                 // No haptic
                                                 break
-                                            case .system:
-                                                Haptics.selectionChanged()
                                             case .light:
                                                 Haptics.impact(.light)
                                             case .medium:
                                                 Haptics.impact(.medium)
                                             case .heavy:
                                                 Haptics.impact(.heavy)
+                                            case .system:
+                                                Haptics.selectionChanged()
                                             }
                                         } else {
                                             Haptics.selectionChanged()

@@ -6,6 +6,8 @@ struct AddReminderView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
     @EnvironmentObject private var inAppNotificationManager: InAppNotificationManager
+    
+    @AppStorage("hapticsEnabled") private var hapticsEnabled: Bool = true
 
     @State private var date: Date = Calendar.current.date(byAdding: .minute, value: 1, to: Date()) ?? Date().addingTimeInterval(60)
     @State private var title = ""
@@ -192,7 +194,7 @@ struct AddReminderView: View {
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
                 Button("Cancel") {
-                    Haptics.selectionChanged()
+                    Haptics.impact(.medium)
                     dismiss()
                 }
                 .foregroundColor(.secondary)

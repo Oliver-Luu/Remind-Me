@@ -140,7 +140,15 @@ private struct CalendarSectionHeader: View {
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 8)
-        .background(.ultraThinMaterial)
+        .background(
+            ZStack {
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(headerGradient(for: day))
+                    .opacity(0.28)
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(.secondary.opacity(0.25), lineWidth: 1)
+            }
+        )
     }
 
     private func display(for date: Date) -> String {
@@ -152,6 +160,20 @@ private struct CalendarSectionHeader: View {
         df.dateStyle = .full
         df.timeStyle = .none
         return df.string(from: date)
+    }
+
+    private func headerGradient(for date: Date) -> LinearGradient {
+        let cal = Calendar.current
+        if cal.isDateInToday(date) {
+            return LinearGradient(colors: [.teal, .blue], startPoint: .topLeading, endPoint: .bottomTrailing)
+        } else if cal.isDateInYesterday(date) {
+            return LinearGradient(colors: [.orange, .pink], startPoint: .topLeading, endPoint: .bottomTrailing)
+        } else if cal.isDateInTomorrow(date) || date > cal.startOfDay(for: Date()) {
+            return LinearGradient(colors: [.green, .blue], startPoint: .topLeading, endPoint: .bottomTrailing)
+        } else {
+            // Past dates other than yesterday: keep a subtle neutral material tint
+            return LinearGradient(colors: [.gray.opacity(0.25), .gray.opacity(0.15)], startPoint: .topLeading, endPoint: .bottomTrailing)
+        }
     }
 }
 
@@ -246,11 +268,15 @@ private struct CalendarItemRow: View {
                 }
             }
             .padding(16)
-            .background {
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(.regularMaterial)
-                    .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 4)
-            }
+            .background(
+                ZStack {
+                    RoundedRectangle(cornerRadius: 16)
+                        .fill(.regularMaterial)
+                        .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 4)
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(.secondary.opacity(0.25), lineWidth: 1)
+                }
+            )
             .contentShape(Rectangle())
             .offset(x: isRemoving ? -40 : offsetX)
             .highPriorityGesture(

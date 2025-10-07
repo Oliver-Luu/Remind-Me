@@ -13,6 +13,7 @@ struct ContentView: View {
     @State private var isPresentingAddReminder = false
     @State private var showingNotificationAlert = false
     @Environment(\.colorScheme) private var colorScheme
+    @AppStorage("hapticsEnabled") private var hapticsEnabled: Bool = true
 
     var body: some View {
         NavigationStack {
@@ -62,7 +63,8 @@ struct ContentView: View {
                             ActionButtonsSection(
                                 isPresentingAddReminder: $isPresentingAddReminder,
                                 showingNotificationAlert: $showingNotificationAlert,
-                                notificationManager: notificationManager
+                                notificationManager: notificationManager,
+                                hapticsEnabled: hapticsEnabled
                             )
                             .padding(.bottom, 40)
                         }
@@ -79,16 +81,16 @@ struct ContentView: View {
             }
             .alert("Enable Notifications", isPresented: $showingNotificationAlert) {
                 Button("Settings") {
-                    Haptics.impact(.light)
+                    if hapticsEnabled { Haptics.impact(.light) }
                     if let settingsUrl = URL(string: UIApplication.openSettingsURLString) {
                         UIApplication.shared.open(settingsUrl)
                     }
                 }
                 Button("Cancel", role: .cancel) {
-                    Haptics.impact(.light)
+                    if hapticsEnabled { Haptics.impact(.light) }
                 }
                 Button("Continue Without Notifications") {
-                    Haptics.impact(.light)
+                    if hapticsEnabled { Haptics.impact(.light) }
                     isPresentingAddReminder = true
                 }
             } message: {
@@ -98,7 +100,7 @@ struct ContentView: View {
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
                     NavigationLink {
-                        SettingsView().modifier(BackHapticToolbar())
+                        SettingsView().modifier(BackHapticToolbar(hapticsEnabled: hapticsEnabled))
                     } label: {
                         Image(systemName: "gearshape.fill")
                             .font(.system(size: 18, weight: .semibold))
@@ -119,7 +121,7 @@ struct ContentView: View {
                     }
                     .buttonStyle(.plain)
                     .buttonBorderShape(.circle)
-                    .simultaneousGesture(TapGesture().onEnded { Haptics.impact(.light) })
+                    .simultaneousGesture(TapGesture().onEnded { if hapticsEnabled { Haptics.impact(.light) } })
                 }
             }
         }
@@ -292,6 +294,7 @@ struct ActionButtonsSection: View {
     @Binding var isPresentingAddReminder: Bool
     @Binding var showingNotificationAlert: Bool
     let notificationManager: NotificationManager
+    let hapticsEnabled: Bool
     
     @State private var remindersButtonScale = 1.0
     @State private var addButtonScale = 1.0
@@ -301,7 +304,7 @@ struct ActionButtonsSection: View {
         VStack(spacing: 20) {
             // My Reminders Button with glass effect
             NavigationLink {
-                RemindersListView().modifier(BackHapticToolbar())
+                RemindersListView().modifier(BackHapticToolbar(hapticsEnabled: hapticsEnabled))
             } label: {
                 HStack(spacing: 12) {
                     Image(systemName: "list.bullet.clipboard")
@@ -330,7 +333,7 @@ struct ActionButtonsSection: View {
                 DragGesture(minimumDistance: 0)
                     .onChanged { _ in
                         if !remindersHapticFired {
-                            Haptics.impact(.light)
+                            if hapticsEnabled { Haptics.impact(.light) }
                             remindersHapticFired = true
                         }
                     }
@@ -350,7 +353,7 @@ struct ActionButtonsSection: View {
             
             // Calendar View Button with glass effect
             NavigationLink {
-                CalendarView().modifier(BackHapticToolbar())
+                CalendarView().modifier(BackHapticToolbar(hapticsEnabled: hapticsEnabled))
             } label: {
                 HStack(spacing: 12) {
                     Image(systemName: "calendar")
@@ -379,7 +382,7 @@ struct ActionButtonsSection: View {
                 DragGesture(minimumDistance: 0)
                     .onChanged { _ in
                         if !remindersHapticFired {
-                            Haptics.impact(.light)
+                            if hapticsEnabled { Haptics.impact(.light) }
                             remindersHapticFired = true
                         }
                     }
@@ -399,7 +402,7 @@ struct ActionButtonsSection: View {
             
             // Add Reminder Button with prominent styling
             Button {
-                Haptics.impact(.medium)
+                if hapticsEnabled { Haptics.impact(.medium) }
                 if notificationManager.authorizationStatus == .denied {
                     showingNotificationAlert = true
                 } else {
@@ -443,6 +446,7 @@ struct ActionButtonsSection: View {
 }
 
 private struct BackHapticToolbar: ViewModifier {
+    var hapticsEnabled: Bool = true
     @Environment(\.dismiss) private var dismiss
 
     func body(content: Content) -> some View {
@@ -451,7 +455,7 @@ private struct BackHapticToolbar: ViewModifier {
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button {
-                        Haptics.impact(.light)
+                        if hapticsEnabled { Haptics.impact(.light) }
                         dismiss()
                     } label: {
                         Image(systemName: "chevron.left")
@@ -468,3 +472,4 @@ private struct BackHapticToolbar: ViewModifier {
         .environmentObject(InAppNotificationManager())
         .modelContainer(for: Item.self, inMemory: true)
 }
+
