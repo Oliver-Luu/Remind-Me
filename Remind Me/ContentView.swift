@@ -342,6 +342,49 @@ struct ActionButtonsSection: View {
                 }
             }
             
+            // Calendar View Button with glass effect
+            NavigationLink {
+                CalendarView().modifier(BackHapticToolbar())
+            } label: {
+                HStack(spacing: 12) {
+                    Image(systemName: "calendar")
+                        .font(.system(size: 20, weight: .medium))
+
+                    Text("Calendar View")
+                        .font(.system(size: 18, weight: .semibold, design: .rounded))
+                }
+                .foregroundColor(.primary)
+                .frame(maxWidth: .infinity)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 16)
+                .background {
+                    RoundedRectangle(cornerRadius: 16)
+                        .fill(.regularMaterial)
+                        .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 4)
+                }
+            }
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { _ in
+                        if !remindersHapticFired {
+                            Haptics.impact(.light)
+                            remindersHapticFired = true
+                        }
+                    }
+                    .onEnded { _ in
+                        remindersHapticFired = false
+                    }
+            )
+            .scaleEffect(remindersButtonScale)
+            .onTapGesture {
+                withAnimation(.easeInOut(duration: 0.1)) {
+                    remindersButtonScale = 0.95
+                }
+                withAnimation(.easeInOut(duration: 0.1).delay(0.1)) {
+                    remindersButtonScale = 1.0
+                }
+            }
+            
             // Add Reminder Button with prominent styling
             Button {
                 Haptics.impact(.medium)
