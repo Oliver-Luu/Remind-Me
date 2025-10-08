@@ -55,123 +55,104 @@ struct EditReminderSeriesView: View {
                 )
                 
                 ScrollView {
-                    VStack(spacing: 24) {
-                        // Header Section
-                        VStack(spacing: 8) {
-                            Image(systemName: "repeat.circle.fill")
-                                .font(.system(size: 40, weight: .light))
-                                .foregroundStyle(
-                                    LinearGradient(
-                                        colors: [.indigo, .purple],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
+                    // Form sections with glass effect
+                    VStack(spacing: 20) {
+                        // Series Details Section
+                        ModernFormSection(title: "Series Details") {
+                            VStack(spacing: 16) {
+                                ModernTextField(title: "Title", text: $title)
+                                
+                                if repeatFrequency == .custom {
+                                    ModernDatePicker(
+                                        title: "Time for all dates",
+                                        selection: $startDate,
+                                        displayedComponents: [.hourAndMinute]
                                     )
-                                )
-                            
-                            Text("Edit Series")
-                                .font(.system(size: 24, weight: .bold, design: .rounded))
-                                .foregroundColor(.primary)
-                        }
-                        .padding(.top, 8)
-                        
-                        // Form sections with glass effect
-                        VStack(spacing: 20) {
-                            // Series Details Section
-                            ModernFormSection(title: "Series Details") {
-                                VStack(spacing: 16) {
-                                    ModernTextField(title: "Title", text: $title)
                                     
-                                    if repeatFrequency == .custom {
-                                        ModernDatePicker(
-                                            title: "Time for all dates",
-                                            selection: $startDate,
-                                            displayedComponents: [.hourAndMinute]
-                                        )
-                                        
-                                        ModernStatusRow(
-                                            icon: "info.circle",
-                                            iconColor: .blue,
-                                            text: "This time will apply to all selected dates"
-                                        )
-                                    } else {
-                                        ModernDatePicker(
-                                            title: "Series start date",
-                                            selection: $startDate,
-                                            displayedComponents: [.date, .hourAndMinute]
-                                        )
-                                    }
-                                }
-                            }
-
-                            // Repeat Options Section
-                            ModernFormSection(title: "Repeat Options") {
-                                VStack(spacing: 16) {
-                                    ModernSelectionRow(
-                                        title: "Repeat",
-                                        value: repeatFrequency.displayName,
-                                        action: { showRepeatDialog = true }
+                                    ModernStatusRow(
+                                        icon: "info.circle",
+                                        iconColor: .blue,
+                                        text: "This time will apply to all selected dates"
                                     )
-
-                                    if repeatFrequency == .custom {
-                                        ModernActionRow(
-                                            title: "Choose dates",
-                                            icon: "calendar",
-                                            action: { showCustomDatePicker = true }
-                                        )
-                                        
-                                        ModernStatusRow(
-                                            icon: customSelectedDates.isEmpty ? "exclamationmark.circle" : "checkmark.circle.fill",
-                                            iconColor: customSelectedDates.isEmpty ? .orange : .green,
-                                            text: customSelectedDates.isEmpty ?
-                                                "No dates selected yet" :
-                                                "Selected \(customSelectedDates.count) date\(customSelectedDates.count == 1 ? "" : "s")"
-                                        )
-                                    } else {
-                                        ModernStepper(
-                                            title: "Interval",
-                                            value: $repeatInterval,
-                                            range: 1...52,
-                                            suffix: repeatFrequency.unitName(for: repeatInterval)
-                                        )
-                                        
-                                        ModernStepper(
-                                            title: "Future reminders",
-                                            value: $futureCount,
-                                            range: 0...200,
-                                            suffix: "reminder\(futureCount == 1 ? "" : "s")"
-                                        )
-                                        
-                                        ModernStatusRow(
-                                            icon: "info.circle",
-                                            iconColor: .blue,
-                                            text: "Series must be repeating. To stop repeating, delete future occurrences."
-                                        )
-                                    }
-                                }
-                            }
-
-                            // Notification Options Section
-                            ModernFormSection(title: "Notification Options") {
-                                VStack(spacing: 16) {
-                                    ModernSelectionRow(
-                                        title: "Follow-up interval",
-                                        value: "\(notificationIntervalMinutes) min",
-                                        action: { showFollowupDialog = true }
-                                    )
-
-                                    ModernStepper(
-                                        title: "Follow-up count",
-                                        value: $notificationRepeatCount,
-                                        range: 0...30,
-                                        suffix: "follow-up\(notificationRepeatCount == 1 ? "" : "s")"
+                                } else {
+                                    ModernDatePicker(
+                                        title: "Series start date",
+                                        selection: $startDate,
+                                        displayedComponents: [.date, .hourAndMinute]
                                     )
                                 }
                             }
                         }
-                        .padding(.bottom, 40)
+
+                        // Repeat Options Section
+                        ModernFormSection(title: "Repeat Options") {
+                            VStack(spacing: 16) {
+                                ModernSelectionRow(
+                                    title: "Repeat",
+                                    value: repeatFrequency.displayName,
+                                    action: { showRepeatDialog = true }
+                                )
+
+                                if repeatFrequency == .custom {
+                                    ModernActionRow(
+                                        title: "Choose dates",
+                                        icon: "calendar",
+                                        action: { showCustomDatePicker = true }
+                                    )
+                                    
+                                    ModernStatusRow(
+                                        icon: customSelectedDates.isEmpty ? "exclamationmark.circle" : "checkmark.circle.fill",
+                                        iconColor: customSelectedDates.isEmpty ? .orange : .green,
+                                        text: customSelectedDates.isEmpty ?
+                                            "No dates selected yet" :
+                                            "Selected \(customSelectedDates.count) date\(customSelectedDates.count == 1 ? "" : "s")"
+                                    )
+                                } else {
+                                    ModernStepper(
+                                        title: "Interval",
+                                        value: $repeatInterval,
+                                        range: 1...52,
+                                        suffix: repeatFrequency.unitName(for: repeatInterval)
+                                    )
+                                    
+                                    ModernStepper(
+                                        title: "Future reminders",
+                                        value: $futureCount,
+                                        range: 0...200,
+                                        suffix: "reminder\(futureCount == 1 ? "" : "s")"
+                                    )
+                                    
+                                    ModernStatusRow(
+                                        icon: "info.circle",
+                                        iconColor: .blue,
+                                        text: "Series must be repeating. To stop repeating, delete future occurrences."
+                                    )
+                                }
+                            }
+                        }
+
+                        // Notification Options Section
+                        ModernFormSection(title: "Notification Options") {
+                            VStack(spacing: 16) {
+                                ModernSelectionRow(
+                                    title: "Follow-up interval",
+                                    value: "\(notificationIntervalMinutes) min",
+                                    action: { showFollowupDialog = true }
+                                )
+
+                                ModernStepper(
+                                    title: "Follow-up count",
+                                    value: $notificationRepeatCount,
+                                    range: 0...30,
+                                    suffix: "follow-up\(notificationRepeatCount == 1 ? "" : "s")"
+                                )
+                            }
+                        }
                     }
-                    .padding(.horizontal, 20)
+                    .padding(.top, 32)
+                    .padding(.bottom, 40)
                 }
+                .padding(.horizontal, 20)
             }
         }
         .navigationTitle("")
