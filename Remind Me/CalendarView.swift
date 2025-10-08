@@ -8,6 +8,7 @@ struct CalendarView: View {
     @State private var selectedItem: Item?
     @State private var searchText: String = ""
     @State private var scrollTarget: Date? = Calendar.current.startOfDay(for: Date())
+    @State private var isPresentingAddReminder = false
 
     private var filteredItems: [Item] {
         let trimmed = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -53,31 +54,31 @@ struct CalendarView: View {
                 ScrollViewReader { proxy in
                     ScrollView {
                         VStack(spacing: 20) {
-                            // Search field
-                            HStack(spacing: 12) {
-                                Image(systemName: "magnifyingglass")
-                                    .foregroundColor(.secondary)
-                                TextField("Search reminders", text: $searchText)
-                                    .textFieldStyle(.plain)
-                                    .disableAutocorrection(true)
-                            }
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 12)
-                            .background {
-                                RoundedRectangle(cornerRadius: 12)
-                                    .fill(.regularMaterial)
-                                    .stroke(.secondary.opacity(0.25), lineWidth: 1)
-                            }
-                            .padding(.horizontal, 20)
-                            .padding(.top, 24)
-
                             if groupedByDay.isEmpty {
-                                EmptyCalendarState()
+                                EmptyCalendarState(isPresentingAddReminder: $isPresentingAddReminder)
                                     .padding(.horizontal, 32)
-                                    .padding(.top, 40)
+                                    .frame(minHeight: geometry.size.height)
                             } else {
+                                // Search field (shown only when there is content)
+                                HStack(spacing: 12) {
+                                    Image(systemName: "magnifyingglass")
+                                        .foregroundColor(.secondary)
+                                    TextField("Search reminders", text: $searchText)
+                                        .textFieldStyle(.plain)
+                                        .disableAutocorrection(true)
+                                }
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 12)
+                                .background {
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .fill(.regularMaterial)
+                                        .stroke(.secondary.opacity(0.25), lineWidth: 1)
+                                }
+                                .padding(.horizontal, 20)
+                                .padding(.top, 24)
+
                                 LazyVStack(spacing: 16, pinnedViews: [.sectionHeaders]) {
-                                    ForEach(groupedByDay, id: \.day) { section in
+                                    ForEach(groupedByDay, id: \ .day) { section in
                                         Section(header: CalendarSectionHeader(day: section.day)) {
                                             ForEach(section.items) { item in
                                                 CalendarItemRow(item: item, selectedItem: $selectedItem, modelContext: modelContext)
@@ -109,6 +110,32 @@ struct CalendarView: View {
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    Haptics.impact(.medium)
+                    isPresentingAddReminder = true
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(.white)
+                        .frame(width: 36, height: 36)
+                        .background {
+                            Circle()
+                                .fill(
+                                    LinearGradient(
+                                        colors: [.teal, .blue],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+                                .shadow(color: .teal.opacity(0.3), radius: 8, x: 0, y: 4)
+                        }
+                        .clipShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .buttonBorderShape(.circle)
+            }
+
             ToolbarItem(placement: .principal) {
                 TitleBarView(
                     title: "Calendar View",
@@ -116,6 +143,13 @@ struct CalendarView: View {
                     gradientColors: [.teal, .blue],
                     topPadding: 32
                 )
+            }
+        }
+        .sheet(isPresented: $isPresentingAddReminder) {
+            NavigationStack {
+                AddReminderView()
+                    .presentationDetents([.large])
+                    .presentationDragIndicator(.visible)
             }
         }
         .sheet(item: $selectedItem) { selected in
@@ -331,31 +365,71 @@ private struct CalendarItemRow: View {
 }
 
 private struct EmptyCalendarState: View {
+    @Binding var isPresentingAddReminder: Bool
     @State private var floatIcon = false
     var body: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "calendar")
-                .font(.system(size: 64, weight: .ultraLight))
-                .foregroundStyle(
-                    LinearGradient(
-                        colors: [.teal, .blue],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
+        VStack(spacing: 24) {
+            Spacer()
+            
+            VStack(spacing: 20) {
+                Image(systemName: "bell.slash.circle")
+                    .font(.system(size: 80, weight: .ultraLight))
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [.teal, .blue],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
                     )
-                )
-                .scaleEffect(floatIcon ? 1.05 : 0.95)
-                .onAppear {
-                    withAnimation(.easeInOut(duration: 2.5).repeatForever(autoreverses: true)) {
-                        floatIcon.toggle()
+                    .scaleEffect(floatIcon ? 1.05 : 0.95)
+                    .onAppear {
+                        withAnimation(
+                            .easeInOut(duration: 2.5)
+                            .repeatForever(autoreverses: true)
+                        ) {
+                            floatIcon.toggle()
+                        }
                     }
+                
+                VStack(spacing: 8) {
+                    Text("No reminders to show")
+                        .font(.system(size: 24, weight: .semibold, design: .rounded))
+                        .foregroundColor(.primary)
+                    
+                    Text("Create a reminder to see it here, grouped by day.")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
                 }
-            Text("No reminders to show")
-                .font(.system(size: 20, weight: .semibold, design: .rounded))
-                .foregroundColor(.primary)
-            Text("Create a reminder to see it here, grouped by day.")
-                .font(.system(size: 15, weight: .medium))
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
+            }
+
+            Button {
+                Haptics.impact(.light)
+                isPresentingAddReminder = true
+            } label: {
+                HStack(spacing: 12) {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.system(size: 18, weight: .medium))
+                    Text("Create Reminder")
+                        .font(.system(size: 16, weight: .semibold, design: .rounded))
+                }
+                .foregroundColor(.white)
+                .padding(.horizontal, 24)
+                .padding(.vertical, 14)
+                .background {
+                    RoundedRectangle(cornerRadius: 25)
+                        .fill(
+                            LinearGradient(
+                                colors: [.teal, .blue],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .shadow(color: .teal.opacity(0.35), radius: 12, x: 0, y: 6)
+                }
+            }
+            
+            Spacer()
         }
     }
 }

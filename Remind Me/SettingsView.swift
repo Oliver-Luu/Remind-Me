@@ -4,31 +4,22 @@ struct SettingsView: View {
     @AppStorage("settings.inAppSound") private var inAppSound: String = "default"
     @AppStorage("settings.pushSound") private var pushSound: String = "default"
     @AppStorage("settings.hapticsLevel") private var hapticsLevel: String = HapticLevel.system.rawValue
+    @AppStorage("settings.appearance") private var appearance: String = "system"
     @EnvironmentObject private var notificationManager: NotificationManager
-
-    private var hasBundledReminderSound: Bool {
-        let bundle = Bundle.main
-        if bundle.url(forResource: "reminder", withExtension: "caf") != nil { return true }
-        if bundle.url(forResource: "reminder", withExtension: "wav") != nil { return true }
-        if bundle.url(forResource: "reminder", withExtension: "mp3") != nil { return true }
-        return false
-    }
 
     private func labelForInApp(_ key: String) -> String {
         switch key {
-        case "default": return "Default (Chirp)"
+        case "default": return "Default (Bell)"
         case "triTone": return "Tri-tone"
         case "bell": return "Bell"
-        case "bundled": return "Bundled sound"
         case "none": return "None"
-        default: return "Default (Chirp)"
+        default: return "Default (Bell)"
         }
     }
 
     private func labelForPush(_ key: String) -> String {
         switch key {
         case "default": return "Default"
-        case "bundled": return "Bundled sound"
         case "none": return "None"
         default: return "Default"
         }
@@ -46,6 +37,14 @@ struct SettingsView: View {
 
     private func labelForHaptics(_ key: String) -> String {
         hapticLevelOptions.first(where: { $0.key == key })?.label ?? "System default"
+    }
+
+    private func appearanceLabel(_ key: String) -> String {
+        switch key {
+        case "light": return "Light"
+        case "dark": return "Dark"
+        default: return "System"
+        }
     }
 
     var body: some View {
@@ -78,10 +77,9 @@ struct SettingsView: View {
                             ModernFormSection(title: "In-App Notifications") {
                                 VStack(spacing: 16) {
                                     Menu {
-                                        Button("Default (Chirp)") { inAppSound = "default"; Haptics.impact(.light) }
+                                        Button("Default (Bell)") { inAppSound = "default"; Haptics.impact(.light) }
                                         Button("Tri-tone") { inAppSound = "triTone"; Haptics.impact(.light) }
                                         Button("Bell") { inAppSound = "bell"; Haptics.impact(.light) }
-                                        Button("Bundled sound") { inAppSound = "bundled"; Haptics.impact(.light) }
                                         Button("None") { inAppSound = "none"; Haptics.impact(.light) }
                                     } label: {
                                         HStack(spacing: 16) {
@@ -107,14 +105,6 @@ struct SettingsView: View {
                                         }
                                     }
                                     .menuStyle(.automatic)
-
-                                    if inAppSound == "bundled" && !hasBundledReminderSound {
-                                        ModernStatusRow(
-                                            icon: "exclamationmark.circle",
-                                            iconColor: .orange,
-                                            text: "Add reminder.caf/wav/mp3 to your app bundle"
-                                        )
-                                    }
 
                                     Button {
                                         NotificationSoundPlayer.shared.playReminderSound()
@@ -147,7 +137,6 @@ struct SettingsView: View {
                                 VStack(spacing: 16) {
                                     Menu {
                                         Button("Default") { pushSound = "default"; Haptics.impact(.light) }
-                                        Button("Bundled sound") { pushSound = "bundled"; Haptics.impact(.light) }
                                         Button("None") { pushSound = "none"; Haptics.impact(.light) }
                                     } label: {
                                         HStack(spacing: 16) {
@@ -174,14 +163,6 @@ struct SettingsView: View {
                                     }
                                     .menuStyle(.automatic)
 
-                                    if pushSound == "bundled" && !hasBundledReminderSound {
-                                        ModernStatusRow(
-                                            icon: "exclamationmark.circle",
-                                            iconColor: .orange,
-                                            text: "Add reminder.caf/wav/mp3 to your app bundle"
-                                        )
-                                    }
-                                    
                                     Button {
                                         Task { await notificationManager.scheduleTestNotification() }
                                     } label: {
@@ -292,6 +273,39 @@ struct SettingsView: View {
                                     }
                                 }
                             }
+
+                            ModernFormSection(title: "Appearance") {
+                                VStack(spacing: 16) {
+                                    Menu {
+                                        Button("System") { appearance = "system"; Haptics.selectionChanged() }
+                                        Button("Light") { appearance = "light"; Haptics.selectionChanged() }
+                                        Button("Dark") { appearance = "dark"; Haptics.selectionChanged() }
+                                    } label: {
+                                        HStack(spacing: 16) {
+                                            Text("Theme")
+                                                .font(.system(size: 14, weight: .medium))
+                                                .foregroundColor(.secondary)
+                                            Spacer()
+                                            HStack(spacing: 8) {
+                                                Text(appearanceLabel(appearance))
+                                                    .font(.system(size: 16, weight: .medium))
+                                                    .foregroundColor(.primary)
+                                                Image(systemName: "chevron.up.chevron.down")
+                                                    .font(.system(size: 12, weight: .medium))
+                                                    .foregroundColor(.secondary)
+                                            }
+                                        }
+                                        .padding(.horizontal, 16)
+                                        .padding(.vertical, 12)
+                                        .background {
+                                            RoundedRectangle(cornerRadius: 12)
+                                                .fill(.regularMaterial)
+                                                .stroke(.secondary.opacity(0.3), lineWidth: 1)
+                                        }
+                                    }
+                                    .menuStyle(.automatic)
+                                }
+                            }
                         }
                         .padding(.top, 32)
                         .padding(.horizontal, 20)
@@ -322,4 +336,3 @@ struct SettingsView: View {
             .environmentObject(InAppNotificationManager())
     }
 }
-

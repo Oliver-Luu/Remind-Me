@@ -171,22 +171,11 @@ class NotificationManager: ObservableObject {
             content.body = item.title
         }
         
-        // Read push sound preference from UserDefaults
+        // Use only default or no sound; remove bundled/custom sounds
         let pushKey = UserDefaults.standard.string(forKey: "settings.pushSound") ?? "default"
-        switch pushKey {
-        case "none":
+        if pushKey == "none" {
             content.sound = nil
-        case "bundled":
-            if Bundle.main.url(forResource: "reminder", withExtension: "caf") != nil {
-                content.sound = UNNotificationSound(named: UNNotificationSoundName("reminder.caf"))
-            } else if Bundle.main.url(forResource: "reminder", withExtension: "wav") != nil {
-                content.sound = UNNotificationSound(named: UNNotificationSoundName("reminder.wav"))
-            } else if Bundle.main.url(forResource: "reminder", withExtension: "mp3") != nil {
-                content.sound = UNNotificationSound(named: UNNotificationSoundName("reminder.mp3"))
-            } else {
-                content.sound = .default
-            }
-        default:
+        } else {
             content.sound = .default
         }
         
@@ -292,22 +281,11 @@ class NotificationManager: ObservableObject {
         currentBadgeCount += 1
         content.badge = NSNumber(value: currentBadgeCount)
 
-        // Read push sound preference from UserDefaults (same as normal notifications)
+        // Use only default or no sound; remove bundled/custom sounds
         let pushKey = UserDefaults.standard.string(forKey: "settings.pushSound") ?? "default"
-        switch pushKey {
-        case "none":
+        if pushKey == "none" {
             content.sound = nil
-        case "bundled":
-            if Bundle.main.url(forResource: "reminder", withExtension: "caf") != nil {
-                content.sound = UNNotificationSound(named: UNNotificationSoundName("reminder.caf"))
-            } else if Bundle.main.url(forResource: "reminder", withExtension: "wav") != nil {
-                content.sound = UNNotificationSound(named: UNNotificationSoundName("reminder.wav"))
-            } else if Bundle.main.url(forResource: "reminder", withExtension: "mp3") != nil {
-                content.sound = UNNotificationSound(named: UNNotificationSoundName("reminder.mp3"))
-            } else {
-                content.sound = .default
-            }
-        default:
+        } else {
             content.sound = .default
         }
         // Mark as a test so we can present banners/sounds in the foreground

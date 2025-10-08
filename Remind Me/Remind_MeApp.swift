@@ -5,15 +5,21 @@
 //  Created by Oliver Luu on 9/22/25.
 //
 
+import UIKit
 import SwiftUI
 import SwiftData
 import UserNotifications
 
 @main
 struct Remind_MeApp: App {
+    @AppStorage("settings.appearance") private var appearance: String = "system"
     @StateObject private var notificationManager = NotificationManager.shared
     @StateObject private var inAppNotificationManager = InAppNotificationManager()
     @Environment(\.scenePhase) private var scenePhase
+    
+    @State private var appearanceOverlayColor: Color = .clear
+    @State private var isAppearanceTransitioning: Bool = false
+    @State private var pendingColorScheme: ColorScheme? = nil
     
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
@@ -45,6 +51,66 @@ struct Remind_MeApp: App {
                 // Overlay in-app notifications on top of everything
                 InAppNotificationView(inAppNotificationManager: inAppNotificationManager)
             }
+            .preferredColorScheme(pendingColorScheme ?? colorSchemeForAppearance(appearance))
+            .overlay(
+                Color.clear
+                .background(
+                    LinearGradient(
+                        colors: [
+                            appearanceOverlayColor.opacity(0.28),
+                            appearanceOverlayColor.opacity(0.18),
+                            appearanceOverlayColor.opacity(0.08)
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                    .blur(radius: isAppearanceTransitioning ? 10 : 0)
+                )
+                .opacity(isAppearanceTransitioning ? 1.0 : 0.0)
+                .ignoresSafeArea()
+                .animation(.interactiveSpring(response: 0.6, dampingFraction: 0.9, blendDuration: 0.2), value: isAppearanceTransitioning)
+            )
+            .onChange(of: appearance) { oldValue, newValue in
+                let target: Color
+                switch newValue {
+                case "light": target = .white
+                case "dark": target = .black
+                default:
+                    if UITraitCollection.current.userInterfaceStyle == .dark {
+                        target = .black
+                    } else {
+                        target = .white
+                    }
+                }
+
+                // Begin crossfade overlay
+                appearanceOverlayColor = target
+                withAnimation(.easeInOut(duration: 0.22)) {
+                    isAppearanceTransitioning = true
+                }
+
+                // Switch the scheme halfway through the overlay fade-in for smoother perception
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.14) {
+                    pendingColorScheme = colorSchemeForAppearance(newValue)
+
+                    #if os(iOS)
+                    let generator = UIImpactFeedbackGenerator(style: .soft)
+                    generator.impactOccurred(intensity: 0.35)
+                    #endif
+
+                    // Fade overlay out after the scheme has changed
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.22) {
+                        withAnimation(.easeInOut(duration: 0.26)) {
+                            isAppearanceTransitioning = false
+                        }
+                        // Clear overlay color and pending scheme after animation completes to avoid retaining state
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                            appearanceOverlayColor = .clear
+                            pendingColorScheme = nil
+                        }
+                    }
+                }
+            }
         }
         .modelContainer(sharedModelContainer)
         .onChange(of: scenePhase) { oldValue, newValue in
@@ -69,6 +135,14 @@ struct Remind_MeApp: App {
     
     private func requestNotificationPermission() async {
         _ = await notificationManager.requestNotificationPermission()
+    }
+    
+    private func colorSchemeForAppearance(_ key: String) -> ColorScheme? {
+        switch key {
+        case "light": return .light
+        case "dark": return .dark
+        default: return nil // system
+        }
     }
 }
 

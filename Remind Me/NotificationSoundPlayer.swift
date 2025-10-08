@@ -49,8 +49,12 @@ final class NotificationSoundPlayer: NSObject, AVAudioPlayerDelegate {
             lastPlayDate = now
             AudioServicesPlaySystemSound(1013) // Bell
             return
+        case "default":
+            lastPlayDate = now
+            AudioServicesPlaySystemSound(1013) // Bell
+            return
         default:
-            // Default fallback
+            // No bundled sound and no matching key, fallback to default system sound
             lastPlayDate = now
             AudioServicesPlaySystemSound(1007) // SMS received
             return
@@ -61,13 +65,13 @@ final class NotificationSoundPlayer: NSObject, AVAudioPlayerDelegate {
         let candidates: [String]
         switch key {
         case "default":
-            candidates = ["default", "chirp", "reminder"]
+            candidates = ["bell", "default"]
         case "triTone":
-            candidates = ["tritone", "tri_tone", "tri-tone", "reminder"]
+            candidates = ["tritone", "tri_tone", "tri-tone"]
         case "bell":
-            candidates = ["bell", "reminder"]
+            candidates = ["bell"]
         default:
-            candidates = ["reminder"]
+            candidates = []
         }
         let exts = ["caf", "wav", "mp3"]
         for name in candidates {
@@ -107,3 +111,4 @@ final class NotificationSoundPlayer: NSObject, AVAudioPlayerDelegate {
         }
     }
 }
+

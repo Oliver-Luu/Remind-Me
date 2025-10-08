@@ -298,6 +298,7 @@ struct ActionButtonsSection: View {
     
     @State private var remindersButtonScale = 1.0
     @State private var addButtonScale = 1.0
+    @State private var calendarButtonScale = 1.0
     @State private var remindersHapticFired = false
     
     var body: some View {
@@ -365,7 +366,7 @@ struct ActionButtonsSection: View {
                 .foregroundColor(.white)
                 .frame(maxWidth: .infinity)
                 .padding(.horizontal, 20)
-                .padding(.vertical, 16)
+                .padding(.vertical, 18)
                 .background {
                     RoundedRectangle(cornerRadius: 16)
                         .fill(

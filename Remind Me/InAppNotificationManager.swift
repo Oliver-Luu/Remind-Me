@@ -22,10 +22,6 @@ class InAppNotificationManager: ObservableObject {
     // Track when a reminder was last shown in-app
     private var lastShownAt: [String: Date] = [:]
     
-    private func playInAppReminderSound() {
-        NotificationSoundPlayer.shared.playReminderSound()
-    }
-    
     func setup(modelContext: ModelContext) {
         self.modelContext = modelContext
         // Schedule triggers for all upcoming reminders
@@ -274,7 +270,6 @@ class InAppNotificationManager: ObservableObject {
         if !isActive && allowReshowAtDue {
             lastShownAt[item.id] = now
             activeNotifications.append(item)
-            playInAppReminderSound()
             showingNotification = true
         } else {
             print("DEBUG: Skipping duplicate/early notification for '\(item.title)'")
