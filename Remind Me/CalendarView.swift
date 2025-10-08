@@ -66,6 +66,7 @@ struct CalendarView: View {
                                     TextField("Search reminders", text: $searchText)
                                         .textFieldStyle(.plain)
                                         .disableAutocorrection(true)
+                                        .onSubmit { Haptics.selectionChanged() }
                                 }
                                 .padding(.horizontal, 16)
                                 .padding(.vertical, 12)
@@ -264,6 +265,7 @@ private struct CalendarItemRow: View {
                 .buttonStyle(.plain)
 
                 Button {
+                    Haptics.selectionChanged()
                     selectedItem = item
                 } label: {
                     VStack(alignment: .leading, spacing: 4) {

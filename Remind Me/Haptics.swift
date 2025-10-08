@@ -37,10 +37,20 @@ enum Haptics {
     }
     
     static func selectionChanged() {
-        if currentLevel == .off { return }
-        let generator = UISelectionFeedbackGenerator()
-        generator.prepare()
-        generator.selectionChanged()
+        switch currentLevel {
+        case .off:
+            return
+        case .system:
+            let generator = UISelectionFeedbackGenerator()
+            generator.prepare()
+            generator.selectionChanged()
+        case .light:
+            impact(.light)
+        case .medium:
+            impact(.medium)
+        case .heavy:
+            impact(.heavy)
+        }
     }
     
     static func success() {

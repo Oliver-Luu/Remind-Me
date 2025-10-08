@@ -400,6 +400,7 @@ struct RemindersSection<Content: View>: View {
                 
                 if showClearButton {
                     Button {
+                        Haptics.selectionChanged()
                         onClearTapped?()
                     } label: {
                         Text("Clear Completed")
@@ -481,6 +482,7 @@ struct ReminderSeriesCard: View {
             // Foreground card content with navigation
             NavigationLink {
                 ReminderSeriesDetailView(parentID: series.id)
+                    .modifier(BackHapticToolbar())
             } label: {
                 VStack(alignment: .leading, spacing: 12) {
                     // Header
@@ -543,6 +545,9 @@ struct ReminderSeriesCard: View {
                         .shadow(color: .black.opacity(0.08), radius: 10, x: 0, y: 4)
                 }
             }
+            .simultaneousGesture(TapGesture().onEnded {
+                Haptics.selectionChanged()
+            })
             .contentShape(Rectangle())
             .offset(x: isRemoving ? -40 : offsetX)
             .highPriorityGesture(
@@ -714,6 +719,7 @@ struct ReminderItemCard: View {
                 
                 // Content - tappable area for editing
                 Button {
+                    Haptics.selectionChanged()
                     selectedItem = item
                 } label: {
                     VStack(alignment: .leading, spacing: 4) {
