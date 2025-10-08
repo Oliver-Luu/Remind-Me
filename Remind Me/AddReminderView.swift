@@ -28,25 +28,26 @@ struct AddReminderView: View {
         GeometryReader { geometry in
             ZStack {
                 // Dynamic animated background
-                RadialGradient(
-                    gradient: Gradient(colors: [
-                        Color.green.opacity(0.2),
-                        Color.blue.opacity(0.15),
+                CrossingRadialBackground(
+                    colorsA: [
+                        Color.green.opacity(0.3),
+                        Color.blue.opacity(0.2),
                         Color.clear
-                    ]),
-                    center: animateGradient ? .topTrailing : .bottomLeading,
-                    startRadius: 30,
-                    endRadius: 300
+                    ],
+                    colorsB: [
+                        Color.green.opacity(0.3),
+                        Color.blue.opacity(0.2),
+                        Color.clear
+                    ],
+                    startCenterA: .bottomTrailing,
+                    endCenterA: .topLeading,
+                    startCenterB: .topLeading,
+                    endCenterB: .bottomTrailing,
+                    startRadius: 50,
+                    endRadius: 400,
+                    duration: 8,
+                    autoreverses: true
                 )
-                .ignoresSafeArea()
-                .onAppear {
-                    withAnimation(
-                        .easeInOut(duration: 10)
-                        .repeatForever(autoreverses: true)
-                    ) {
-                        animateGradient.toggle()
-                    }
-                }
                 
                 ScrollView {
                     VStack(spacing: 24) {

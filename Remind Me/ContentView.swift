@@ -506,6 +506,9 @@ struct BackHapticToolbar: ViewModifier {
                     } label: {
                         Image(systemName: "chevron.left")
                             .font(.system(size: 17, weight: .semibold))
+                            .frame(width: 44, height: 44, alignment: .center)
+                            .contentShape(Circle())
+                            .accessibilityLabel("Back")
                     }
                     .buttonStyle(.plain)
                 }
@@ -520,3 +523,4 @@ struct BackHapticToolbar: ViewModifier {
         .environmentObject(InAppNotificationManager())
         .modelContainer(for: Item.self, inMemory: true)
 }
+
