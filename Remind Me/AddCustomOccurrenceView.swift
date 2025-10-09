@@ -15,27 +15,10 @@ struct AddCustomOccurrenceView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 20) {
-                // Header section
-                VStack(spacing: 6) {
-                    Text("Add Custom Occurrence")
-                        .font(.title2)
-                        .fontWeight(.semibold)
-                        .multilineTextAlignment(.center)
-                    
-                    if let template = templateItem {
-                        Text("for \"\(template.title)\"")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                            .multilineTextAlignment(.center)
-                            .lineLimit(2)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                }
-                .padding(.horizontal)
-                
                 // Date selection section
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Select Date & Time")
+                        .padding(.top , 32)
                         .font(.headline)
                         .padding(.horizontal)
                     

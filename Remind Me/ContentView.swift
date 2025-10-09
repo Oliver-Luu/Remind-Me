@@ -270,7 +270,7 @@ struct NotificationStatusView: View {
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundColor(.orange)
                 
-                Text("Enable in Settings for full functionality")
+                Text("Enable in iOS System Settings for full functionality")
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
