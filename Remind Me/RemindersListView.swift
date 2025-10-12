@@ -22,6 +22,7 @@ struct SeriesID: Identifiable { let id: String }
 struct RemindersListView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Query(sort: [SortDescriptor(\Item.timestamp, order: .forward)]) private var items: [Item]
     @State private var isPresentingAddReminder = false
     @State private var selectedItem: Item?
@@ -87,6 +88,27 @@ struct RemindersListView: View {
         let completedSeries = repeatingSeries.filter { $0.allCompleted }
         return !completedSingles.isEmpty || !completedSeries.isEmpty
     }
+    
+    // Dynamic Type scaling properties
+    private var dynamicSectionSpacing: CGFloat {
+        16 * min(dynamicTypeSize.scaleFactor, 1.3)
+    }
+    
+    private var dynamicTopPadding: CGFloat {
+        32 * min(dynamicTypeSize.scaleFactor, 1.3)
+    }
+    
+    private var dynamicHorizontalPadding: CGFloat {
+        20 * min(dynamicTypeSize.scaleFactor, 1.3)
+    }
+    
+    private var dynamicToolbarIconSize: CGFloat {
+        18 * min(dynamicTypeSize.scaleFactor, 1.2)
+    }
+    
+    private var dynamicToolbarButtonSize: CGFloat {
+        max(36, 36 * min(dynamicTypeSize.scaleFactor, 1.2))
+    }
 
     var body: some View {
         GeometryReader { geometry in
@@ -118,7 +140,7 @@ struct RemindersListView: View {
                         EmptyStateView(isPresentingAddReminder: $isPresentingAddReminder)
                     } else {
                         ScrollView {
-                            LazyVStack(spacing: 16) {
+                            LazyVStack(spacing: dynamicSectionSpacing) {
                                 // Removed header block (icon only to avoid redundant title)
                                 
                                 // Repeating reminders
@@ -158,8 +180,8 @@ struct RemindersListView: View {
                                 // Add some bottom padding for better scrolling experience
                                 Color.clear.frame(height: 100)
                             }
-                            .padding(.horizontal, 20)
-                            .padding(.top, 32)
+                            .padding(.horizontal, dynamicHorizontalPadding)
+                            .padding(.top, dynamicTopPadding)
                         }
                     }
                 }
@@ -173,7 +195,8 @@ struct RemindersListView: View {
                     title: "My Reminders",
                     iconSystemName: "list.bullet.clipboard.fill",
                     gradientColors: [.orange, .pink],
-                    topPadding: 32
+                    topPadding: 32,
+                    fontScale: min(dynamicTypeSize.scaleFactor, 1.0)
                 )
                 .simultaneousGesture(TapGesture().onEnded {
                     Haptics.selectionChanged()
@@ -186,9 +209,9 @@ struct RemindersListView: View {
                     isPresentingAddReminder = true
                 } label: {
                     Image(systemName: "plus")
-                        .font(.system(size: 18, weight: .semibold))
+                        .font(.system(size: dynamicToolbarIconSize, weight: .semibold))
                         .foregroundColor(.white)
-                        .frame(width: 36, height: 36)
+                        .frame(width: dynamicToolbarButtonSize, height: dynamicToolbarButtonSize)
                         .background {
                             Circle()
                                 .fill(
@@ -381,6 +404,7 @@ struct RemindersSection<Content: View>: View {
     let content: Content
     let showClearButton: Bool
     let onClearTapped: (() -> Void)?
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     
     init(title: String, showClearButton: Bool = false, onClearTapped: (() -> Void)? = nil, @ViewBuilder content: () -> Content) {
         self.title = title
@@ -389,12 +413,34 @@ struct RemindersSection<Content: View>: View {
         self.onClearTapped = onClearTapped
     }
     
+    private var dynamicTitleSize: CGFloat {
+        20 * min(dynamicTypeSize.scaleFactor, 1.3)
+    }
+    
+    private var dynamicButtonTextSize: CGFloat {
+        14 * min(dynamicTypeSize.scaleFactor, 1.2)
+    }
+    
+    private var dynamicSectionSpacing: CGFloat {
+        16 * min(dynamicTypeSize.scaleFactor, 1.2)
+    }
+    
+    private var dynamicContentSpacing: CGFloat {
+        12 * min(dynamicTypeSize.scaleFactor, 1.2)
+    }
+    
+    private var dynamicButtonPadding: CGFloat {
+        max(6, 6 * min(dynamicTypeSize.scaleFactor, 1.2))
+    }
+    
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: dynamicSectionSpacing) {
             HStack {
                 Text(title)
-                    .font(.system(size: 20, weight: .bold, design: .rounded))
+                    .font(.system(size: dynamicTitleSize, weight: .bold, design: .rounded))
                     .foregroundColor(.primary)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.9)
                 
                 Spacer()
                 
@@ -404,10 +450,12 @@ struct RemindersSection<Content: View>: View {
                         onClearTapped?()
                     } label: {
                         Text("Clear Completed")
-                            .font(.system(size: 14, weight: .medium))
+                            .font(.system(size: dynamicButtonTextSize, weight: .medium))
                             .foregroundColor(.red)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                            .padding(.horizontal, max(12, 12 * min(dynamicTypeSize.scaleFactor, 1.2)))
+                            .padding(.vertical, dynamicButtonPadding)
                             .background {
                                 RoundedRectangle(cornerRadius: 8)
                                     .fill(.red.opacity(0.1))
@@ -418,7 +466,7 @@ struct RemindersSection<Content: View>: View {
             }
             .padding(.horizontal, 4)
             
-            LazyVStack(spacing: 12) {
+            LazyVStack(spacing: dynamicContentSpacing) {
                 content
             }
         }
@@ -429,20 +477,52 @@ struct ReminderSeriesCard: View {
     let series: ReminderSeries
     @Binding var editingSeries: SeriesID?
     let modelContext: ModelContext
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var cardScale = 1.0
     @State private var isRemoving = false
     @State private var offsetX: CGFloat = 0
     @State private var startOffsetX: CGFloat = 0
     private let revealWidth: CGFloat = 88
 
-    private func dynamicTitleSize(for width: CGFloat) -> CGFloat {
-        switch width {
-        case ..<340: return 16
-        case ..<390: return 17
-        case ..<430: return 18
-        case ..<600: return 19
-        default: return 20
+    private var dynamicTitleSize: CGFloat {
+        let baseSize: CGFloat
+        switch UIScreen.main.bounds.width {
+        case ..<340: baseSize = 16
+        case ..<390: baseSize = 17
+        case ..<430: baseSize = 18
+        case ..<600: baseSize = 19
+        default: baseSize = 20
         }
+        return baseSize * min(dynamicTypeSize.scaleFactor, 1.3)
+    }
+    
+    private var dynamicSubtitleSize: CGFloat {
+        let baseSize: CGFloat
+        switch UIScreen.main.bounds.width {
+        case ..<340: baseSize = 13
+        case ..<390: baseSize = 13.5
+        case ..<430: baseSize = 14
+        case ..<600: baseSize = 14.5
+        default: baseSize = 15
+        }
+        return baseSize * min(dynamicTypeSize.scaleFactor, 1.3)
+    }
+    
+    private var dynamicBadgeSize: CGFloat {
+        let baseSize: CGFloat = 12
+        return baseSize * min(dynamicTypeSize.scaleFactor, 1.2)
+    }
+    
+    private var dynamicSpacing: CGFloat {
+        16 * min(dynamicTypeSize.scaleFactor, 1.2)
+    }
+    
+    private var dynamicCardPadding: CGFloat {
+        max(16, 16 * min(dynamicTypeSize.scaleFactor, 1.3))
+    }
+    
+    private var dynamicTrashIconSize: CGFloat {
+        14 * min(dynamicTypeSize.scaleFactor, 1.2)
     }
     
     var body: some View {
@@ -462,7 +542,7 @@ struct ReminderSeriesCard: View {
                     }
                 } label: {
                     Label("Delete", systemImage: "trash")
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(.system(size: dynamicTrashIconSize, weight: .semibold))
                         .foregroundColor(.white)
                         .frame(width: revealWidth)
                         .frame(maxHeight: .infinity)
@@ -484,61 +564,68 @@ struct ReminderSeriesCard: View {
                 ReminderSeriesDetailView(parentID: series.id)
                     .modifier(BackHapticToolbar())
             } label: {
-                VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: 12 * min(dynamicTypeSize.scaleFactor, 1.2)) {
                     // Header
-                    HStack(spacing: 12) {
+                    HStack(spacing: dynamicSpacing) {
                         Image(systemName: series.allCompleted ? "checkmark.circle.fill" : "repeat.circle.fill")
-                            .font(.system(size: 24, weight: .medium))
+                            .font(.system(size: max(24, 24 * min(dynamicTypeSize.scaleFactor, 1.3)), weight: .medium))
                             .foregroundStyle(series.allCompleted ? .green : .blue)
                         
-                        VStack(alignment: .leading, spacing: 2) {
+                        VStack(alignment: .leading, spacing: 2 * min(dynamicTypeSize.scaleFactor, 1.2)) {
                             Text(series.title)
-                                .font(.system(size: dynamicTitleSize(for: UIScreen.main.bounds.width), weight: .semibold, design: .rounded))
+                                .font(.system(size: dynamicTitleSize, weight: .semibold, design: .rounded))
                                 .foregroundColor(.primary)
                                 .strikethrough(series.allCompleted)
-                                .lineLimit(1)
-                                .truncationMode(.tail)
-                                .minimumScaleFactor(0.85)
-                                .allowsTightening(true)
+                                .lineLimit(2)
+                                .multilineTextAlignment(.leading)
+                                .minimumScaleFactor(0.9)
                             
                             Text(series.repeatFrequency.display(interval: series.items.first?.repeatInterval ?? 1))
-                                .font(.system(size: 14, weight: .medium))
+                                .font(.system(size: dynamicSubtitleSize, weight: .medium))
                                 .foregroundColor(.secondary)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.9)
                         }
                         
                         Spacer()
                         
                         Image(systemName: "chevron.right")
-                            .font(.system(size: 12, weight: .medium))
+                            .font(.system(size: max(12, 12 * min(dynamicTypeSize.scaleFactor, 1.2)), weight: .medium))
                             .foregroundColor(.secondary)
                     }
                     
                     // Details
-                    HStack(spacing: 16) {
+                    HStack(spacing: 16 * min(dynamicTypeSize.scaleFactor, 1.2)) {
                         if let next = series.nextUpcoming {
                             Label {
                                 Text(conciseDateTime(next.timestamp))
-                                    .font(.caption)
+                                    .font(.system(size: dynamicBadgeSize))
                                     .foregroundColor(.secondary)
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.9)
                             } icon: {
                                 Image(systemName: "calendar.badge.clock")
+                                    .font(.system(size: dynamicBadgeSize))
                                     .foregroundColor(.orange)
                             }
                         }
                         
                         Label {
                             Text("\(series.totalCount) total")
-                                .font(.caption)
+                                .font(.system(size: dynamicBadgeSize))
                                 .foregroundColor(.secondary)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.9)
                         } icon: {
                             Image(systemName: "number.circle")
+                                .font(.system(size: dynamicBadgeSize))
                                 .foregroundColor(.blue)
                         }
                         
                         Spacer()
                     }
                 }
-                .padding(16)
+                .padding(dynamicCardPadding)
                 .background {
                     RoundedRectangle(cornerRadius: 16)
                         .fill(.ultraThinMaterial)
@@ -656,20 +743,51 @@ struct ReminderItemCard: View {
     let item: Item
     @Binding var selectedItem: Item?
     let modelContext: ModelContext
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var cardScale = 1.0
     @State private var isRemoving = false
     @State private var offsetX: CGFloat = 0
     @State private var startOffsetX: CGFloat = 0
     private let revealWidth: CGFloat = 88
 
-    private func dynamicItemTitleSize(for width: CGFloat) -> CGFloat {
-        switch width {
-        case ..<340: return 14.5
-        case ..<390: return 15.5
-        case ..<430: return 16
-        case ..<600: return 17
-        default: return 18
+    private var dynamicTitleSize: CGFloat {
+        let baseSize: CGFloat
+        switch UIScreen.main.bounds.width {
+        case ..<340: baseSize = 14.5
+        case ..<390: baseSize = 15.5
+        case ..<430: baseSize = 16
+        case ..<600: baseSize = 17
+        default: baseSize = 18
         }
+        return baseSize * min(dynamicTypeSize.scaleFactor, 1.3)
+    }
+    
+    private var dynamicTimeSize: CGFloat {
+        let baseSize: CGFloat
+        switch UIScreen.main.bounds.width {
+        case ..<340: baseSize = 12
+        case ..<390: baseSize = 13
+        case ..<430: baseSize = 14
+        case ..<600: baseSize = 14.5
+        default: baseSize = 15
+        }
+        return baseSize * min(dynamicTypeSize.scaleFactor, 1.3)
+    }
+    
+    private var dynamicCheckmarkSize: CGFloat {
+        24 * min(dynamicTypeSize.scaleFactor, 1.3)
+    }
+    
+    private var dynamicSpacing: CGFloat {
+        16 * min(dynamicTypeSize.scaleFactor, 1.2)
+    }
+    
+    private var dynamicTrashIconSize: CGFloat {
+        14 * min(dynamicTypeSize.scaleFactor, 1.2)
+    }
+    
+    private var dynamicCardPadding: CGFloat {
+        max(16, 16 * min(dynamicTypeSize.scaleFactor, 1.3))
     }
     
     var body: some View {
@@ -687,7 +805,7 @@ struct ReminderItemCard: View {
                     }
                 } label: {
                     Label("Delete", systemImage: "trash")
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(.system(size: dynamicTrashIconSize, weight: .semibold))
                         .foregroundColor(.white)
                         .frame(width: revealWidth)
                         .frame(maxHeight: .infinity)
@@ -705,14 +823,14 @@ struct ReminderItemCard: View {
             .animation(.easeInOut(duration: 0.2), value: offsetX)
             
             // Foreground card content
-            HStack(spacing: 16) {
+            HStack(spacing: dynamicSpacing) {
                 // Completion button
                 Button {
                     toggleCompletion(for: item)
                     Haptics.selectionChanged()
                 } label: {
                     Image(systemName: item.isCompleted ? "checkmark.circle.fill" : "circle")
-                        .font(.system(size: 24, weight: .medium))
+                        .font(.system(size: dynamicCheckmarkSize, weight: .medium))
                         .foregroundStyle(item.isCompleted ? .green : .secondary)
                 }
                 .buttonStyle(.plain)
@@ -722,19 +840,19 @@ struct ReminderItemCard: View {
                     Haptics.selectionChanged()
                     selectedItem = item
                 } label: {
-                    VStack(alignment: .leading, spacing: 4) {
+                    VStack(alignment: .leading, spacing: 4 * min(dynamicTypeSize.scaleFactor, 1.2)) {
                         Text(item.title)
-                            .font(.system(size: dynamicItemTitleSize(for: UIScreen.main.bounds.width), weight: .semibold, design: .rounded))
+                            .font(.system(size: dynamicTitleSize, weight: .semibold, design: .rounded))
                             .foregroundColor(.primary)
                             .strikethrough(item.isCompleted)
-                            .lineLimit(1)
-                            .truncationMode(.tail)
-                            .minimumScaleFactor(0.85)
-                            .allowsTightening(true)
-                        
-                        Text(formatted(date: item.timestamp))
-                            .font(.system(size: 14, weight: .medium))
+                            .lineLimit(2)
+                            .multilineTextAlignment(.leading)
+                            .minimumScaleFactor(0.9)
+                        Text(conciseDateTime(item.timestamp))
+                            .font(.system(size: dynamicTimeSize, weight: .medium))
                             .foregroundColor(.secondary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.9)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .contentShape(Rectangle())
@@ -753,17 +871,18 @@ struct ReminderItemCard: View {
                         }
                     } label: {
                         Image(systemName: "trash")
-                            .font(.system(size: 14, weight: .medium))
+                            .font(.system(size: dynamicTrashIconSize, weight: .medium))
                             .foregroundColor(.white)
-                            .frame(width: 28, height: 28)
-                            .background {
-                                Circle().fill(Color.red)
-                            }
+                            .frame(
+                                width: max(28, 28 * min(dynamicTypeSize.scaleFactor, 1.2)),
+                                height: max(28, 28 * min(dynamicTypeSize.scaleFactor, 1.2))
+                            )
+                            .background { Circle().fill(Color.red) }
                     }
                     .buttonStyle(.plain)
                 }
             }
-            .padding(16)
+            .padding(dynamicCardPadding)
             .background {
                 RoundedRectangle(cornerRadius: 16)
                     .fill(.regularMaterial)
@@ -779,25 +898,28 @@ struct ReminderItemCard: View {
                         let proposed = startOffsetX + t.width
                         if proposed < -revealWidth {
                             let extra = proposed + revealWidth // negative when over-dragging left
-                            offsetX = -revealWidth + extra / 6 // rubber-band beyond limit (changed from /4 to /6)
+                            offsetX = -revealWidth + extra / 6 // rubber-band beyond limit
                         } else if proposed > 0 {
-                            offsetX = proposed / 6 // rubber-band when pulling right past 0 (changed from /4 to /6)
+                            offsetX = proposed / 6 // rubber-band when pulling right past 0
                         } else {
                             offsetX = proposed
                         }
                     }
                     .onEnded { value in
                         let predicted = startOffsetX + value.predictedEndTranslation.width
-                        let willOpen = -predicted > revealWidth * 0.4 // changed from 0.35 to 0.4
+                        let willOpen = -predicted > revealWidth * 0.4
                         let target: CGFloat = willOpen ? -revealWidth : 0
-                        let overshoot: CGFloat = willOpen ? (target - 3) : (target + 3) // changed from 6 to 3
+                        let overshoot: CGFloat = willOpen ? (target - 3) : (target + 3)
                         
                         // Phase 1: quick overshoot
-                        withAnimation(.spring(response: 0.16, dampingFraction: 0.7, blendDuration: 0.08)) { // changed animation timings
+                        withAnimation(.spring(response: 0.16, dampingFraction: 0.7, blendDuration: 0.08)) {
                             offsetX = overshoot
                         }
                         // Phase 2: settle to target
-                        withAnimation(.spring(response: 0.32, dampingFraction: 0.9, blendDuration: 0.1).delay(0.02)) { // changed animation timings and delay
+                        withAnimation(
+                            .spring(response: 0.32, dampingFraction: 0.9, blendDuration: 0.1)
+                                .delay(0.02)
+                        ) {
                             offsetX = target
                         }
                         startOffsetX = target
@@ -839,6 +961,25 @@ struct ReminderItemCard: View {
             if item.isCompleted {
                 Task { await NotificationManager.shared.handleReminderCompleted(item) }
             }
+        }
+    }
+    
+    private func conciseDateTime(_ date: Date) -> String {
+        let calendar = Calendar.current
+        let timeFormatter = DateFormatter()
+        timeFormatter.dateStyle = .none
+        timeFormatter.timeStyle = .short
+        let time = timeFormatter.string(from: date)
+
+        if calendar.isDateInToday(date) {
+            return "Today \(time)"
+        } else if calendar.isDateInTomorrow(date) {
+            return "Tomorrow \(time)"
+        } else {
+            let df = DateFormatter()
+            df.dateStyle = .short
+            df.timeStyle = .short
+            return df.string(from: date)
         }
     }
 }

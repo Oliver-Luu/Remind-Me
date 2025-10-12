@@ -4,6 +4,7 @@ import SwiftData
 struct CalendarView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Query(sort: [SortDescriptor(\Item.timestamp, order: .forward)]) private var items: [Item]
     @State private var selectedItem: Item?
     @State private var searchText: String = ""
@@ -24,6 +25,26 @@ struct CalendarView: View {
         return groups
             .map { ($0.key, $0.value.sorted { $0.timestamp < $1.timestamp }) }
             .sorted { $0.0 < $1.0 }
+    }
+    
+    private var dynamicSearchSpacing: CGFloat {
+        12 * min(dynamicTypeSize.scaleFactor, 1.3)
+    }
+    
+    private var dynamicSearchPadding: CGFloat {
+        max(12, 12 * min(dynamicTypeSize.scaleFactor, 1.3))
+    }
+    
+    private var dynamicSectionSpacing: CGFloat {
+        16 * min(dynamicTypeSize.scaleFactor, 1.3)
+    }
+    
+    private var dynamicToolbarIconSize: CGFloat {
+        min(18, 18 * min(dynamicTypeSize.scaleFactor, 1.3))
+    }
+    
+    private var dynamicToolbarButtonSize: CGFloat {
+        max(36, 36 * min(dynamicTypeSize.scaleFactor, 1.2)) // Cap scaling for buttons
     }
 
     var body: some View {
@@ -53,14 +74,14 @@ struct CalendarView: View {
 
                 ScrollViewReader { proxy in
                     ScrollView {
-                        VStack(spacing: 20) {
+                        VStack(spacing: dynamicSectionSpacing) {
                             if groupedByDay.isEmpty {
                                 EmptyCalendarState(isPresentingAddReminder: $isPresentingAddReminder)
                                     .padding(.horizontal, 32)
                                     .frame(minHeight: geometry.size.height)
                             } else {
                                 // Search field (shown only when there is content)
-                                HStack(spacing: 12) {
+                                HStack(spacing: dynamicSearchSpacing) {
                                     Image(systemName: "magnifyingglass")
                                         .foregroundColor(.secondary)
                                     TextField("Search reminders", text: $searchText)
@@ -68,8 +89,8 @@ struct CalendarView: View {
                                         .disableAutocorrection(true)
                                         .onSubmit { Haptics.selectionChanged() }
                                 }
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 12)
+                                .padding(.horizontal, dynamicSearchPadding + 4)
+                                .padding(.vertical, dynamicSearchPadding)
                                 .background {
                                     RoundedRectangle(cornerRadius: 12)
                                         .fill(.regularMaterial)
@@ -78,7 +99,7 @@ struct CalendarView: View {
                                 .padding(.horizontal, 20)
                                 .padding(.top, 24)
 
-                                LazyVStack(spacing: 16, pinnedViews: [.sectionHeaders]) {
+                                LazyVStack(spacing: dynamicSectionSpacing, pinnedViews: [.sectionHeaders]) {
                                     ForEach(groupedByDay, id: \ .day) { section in
                                         Section(header: CalendarSectionHeader(day: section.day)) {
                                             ForEach(section.items) { item in
@@ -117,9 +138,9 @@ struct CalendarView: View {
                     isPresentingAddReminder = true
                 } label: {
                     Image(systemName: "plus")
-                        .font(.system(size: 18, weight: .semibold))
+                        .font(.system(size: dynamicToolbarIconSize, weight: .semibold))
                         .foregroundColor(.white)
-                        .frame(width: 36, height: 36)
+                        .frame(width: dynamicToolbarButtonSize, height: dynamicToolbarButtonSize)
                         .background {
                             Circle()
                                 .fill(
@@ -142,7 +163,8 @@ struct CalendarView: View {
                     title: "Calendar View",
                     iconSystemName: "calendar",
                     gradientColors: [.teal, .blue],
-                    topPadding: 32
+                    topPadding: 32,
+                    fontScale: min(dynamicTypeSize.scaleFactor, 1.0)
                 )
             }
         }
@@ -165,16 +187,27 @@ struct CalendarView: View {
 
 private struct CalendarSectionHeader: View {
     let day: Date
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    
+    private var dynamicTitleSize: CGFloat {
+        18 * min(dynamicTypeSize.scaleFactor, 1.3)
+    }
+    
+    private var dynamicPadding: CGFloat {
+        8 * min(dynamicTypeSize.scaleFactor, 1.3)
+    }
 
     var body: some View {
         HStack {
             Text(display(for: day))
-                .font(.system(size: 18, weight: .bold, design: .rounded))
+                .font(.system(size: dynamicTitleSize, weight: .bold, design: .rounded))
                 .foregroundColor(.primary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.9)
             Spacer()
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 8)
+        .padding(.horizontal, dynamicPadding)
+        .padding(.vertical, dynamicPadding)
         .background(
             ZStack {
                 RoundedRectangle(cornerRadius: 12)
@@ -216,10 +249,35 @@ private struct CalendarItemRow: View {
     let item: Item
     @Binding var selectedItem: Item?
     let modelContext: ModelContext
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var isRemoving = false
     @State private var offsetX: CGFloat = 0
     @State private var startOffsetX: CGFloat = 0
     private let revealWidth: CGFloat = 88
+    
+    private var dynamicTitleSize: CGFloat {
+        16 * min(dynamicTypeSize.scaleFactor, 1.3)
+    }
+    
+    private var dynamicTimeSize: CGFloat {
+        14 * min(dynamicTypeSize.scaleFactor, 1.3)
+    }
+    
+    private var dynamicIconSize: CGFloat {
+        min(22, 22 * min(dynamicTypeSize.scaleFactor, 1.3))
+    }
+    
+    private var dynamicSpacing: CGFloat {
+        16 * min(dynamicTypeSize.scaleFactor, 1.3)
+    }
+    
+    private var dynamicPadding: CGFloat {
+        16 * min(dynamicTypeSize.scaleFactor, 1.3)
+    }
+    
+    private var dynamicTrashIconSize: CGFloat {
+        min(14, 14 * min(dynamicTypeSize.scaleFactor, 1.3))
+    }
 
     var body: some View {
         ZStack(alignment: .trailing) {
@@ -236,7 +294,7 @@ private struct CalendarItemRow: View {
                     }
                 } label: {
                     Label("Delete", systemImage: "trash")
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(.system(size: dynamicTrashIconSize, weight: .semibold))
                         .foregroundColor(.white)
                         .frame(width: revealWidth)
                         .frame(maxHeight: .infinity)

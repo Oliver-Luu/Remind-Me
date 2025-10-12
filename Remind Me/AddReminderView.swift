@@ -5,6 +5,7 @@ struct AddReminderView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @EnvironmentObject private var inAppNotificationManager: InAppNotificationManager
     
     @AppStorage("hapticsEnabled") private var hapticsEnabled: Bool = true
@@ -23,6 +24,23 @@ struct AddReminderView: View {
 
     @State private var showInvalidDateAlert = false
     @State private var invalidDateMessage = ""
+    
+    // Dynamic Type scaling properties
+    private var dynamicSpacing: CGFloat {
+        24 * min(dynamicTypeSize.scaleFactor, 1.3)
+    }
+    
+    private var dynamicSectionSpacing: CGFloat {
+        20 * min(dynamicTypeSize.scaleFactor, 1.3)
+    }
+    
+    private var dynamicTopPadding: CGFloat {
+        32 * min(dynamicTypeSize.scaleFactor, 1.3)
+    }
+    
+    private var dynamicHorizontalPadding: CGFloat {
+        20 * min(dynamicTypeSize.scaleFactor, 1.3)
+    }
 
     var body: some View {
         GeometryReader { geometry in
@@ -50,14 +68,14 @@ struct AddReminderView: View {
                 )
                 
                 ScrollView {
-                    VStack(spacing: 24) {
+                    VStack(spacing: dynamicSpacing) {
                         // Removed Header Section
                         
                         // Form sections with glass effect
-                        VStack(spacing: 20) {
+                        VStack(spacing: dynamicSectionSpacing) {
                             // Reminder Details Section
                             ModernFormSection(title: "Reminder Details") {
-                                VStack(spacing: 16) {
+                                VStack(spacing: 16 * dynamicTypeSize.scaleFactor) {
                                     ModernTextField(title: "Reminder Title", text: $title, centered: true)
                                     
                                     if repeatFrequency == .custom {
@@ -71,11 +89,12 @@ struct AddReminderView: View {
                                         HStack {
                                             Image(systemName: "info.circle")
                                                 .foregroundColor(.secondary)
-                                                .font(.caption)
+                                                .font(.system(size: UIFont.preferredFont(forTextStyle: .caption1).pointSize * dynamicTypeSize.scaleFactor))
                                             
                                             Text("This time will apply to all selected dates.")
-                                                .font(.caption)
+                                                .font(.system(size: UIFont.preferredFont(forTextStyle: .caption1).pointSize * dynamicTypeSize.scaleFactor))
                                                 .foregroundStyle(.secondary)
+                                                .lineLimit(nil)
                                             
                                             Spacer()
                                         }
@@ -92,7 +111,7 @@ struct AddReminderView: View {
                             
                             // Repeat Options Section
                             ModernFormSection(title: "Repeat Options") {
-                                VStack(spacing: 16) {
+                                VStack(spacing: 16 * dynamicTypeSize.scaleFactor) {
                                     ModernCenteredPicker(
                                         title: "Repeat",
                                         selection: $repeatFrequency,
@@ -154,7 +173,7 @@ struct AddReminderView: View {
                             
                             // Notification Options Section
                             ModernFormSection(title: "Notification Options") {
-                                VStack(spacing: 16) {
+                                VStack(spacing: 16 * dynamicTypeSize.scaleFactor) {
                                     ModernPicker(
                                         title: "Follow-up interval",
                                         selection: $notificationIntervalMinutes,
@@ -183,8 +202,8 @@ struct AddReminderView: View {
                                 }
                             }
                         }
-                        .padding(.top, 32)
-                        .padding(.horizontal, 20)
+                        .padding(.top, dynamicTopPadding)
+                        .padding(.horizontal, dynamicHorizontalPadding)
                         .frame(minHeight: geometry.size.height - 100)
                     }
                 }
@@ -199,6 +218,7 @@ struct AddReminderView: View {
                     dismiss()
                 }
                 .foregroundColor(.secondary)
+                .font(.system(size: UIFont.preferredFont(forTextStyle: .body).pointSize * min(dynamicTypeSize.scaleFactor, 1.2)))
             }
             ToolbarItem(placement: .confirmationAction) {
                 Button("Save") {
@@ -208,6 +228,7 @@ struct AddReminderView: View {
                 .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 .fontWeight(.semibold)
                 .foregroundColor(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? .secondary : .blue)
+                .font(.system(size: UIFont.preferredFont(forTextStyle: .body).pointSize * min(dynamicTypeSize.scaleFactor, 1.2)))
             }
             ToolbarItem(placement: .principal) {
                 TitleBarView(
@@ -215,7 +236,7 @@ struct AddReminderView: View {
                     iconSystemName: "plus.circle.fill",
                     gradientColors: [.green, .blue],
                     topPadding: 32,
-                    fontScale: 0.85
+                    fontScale: 1.0
                 )
             }
         }

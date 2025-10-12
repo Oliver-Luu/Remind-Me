@@ -3,16 +3,37 @@ import SwiftUI
 struct CustomRepeatSelectionView: View {
     @Binding var selectedDates: Set<DateComponents>
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    
+    private var dynamicTitleSize: CGFloat {
+        40 * dynamicTypeSize.scaleFactor
+    }
+    
+    private var dynamicIconSize: CGFloat {
+        16 * dynamicTypeSize.scaleFactor
+    }
+    
+    private var dynamicSubheadlineSize: CGFloat {
+        UIFont.preferredFont(forTextStyle: .subheadline).pointSize * dynamicTypeSize.scaleFactor
+    }
+    
+    private var dynamicSpacing: CGFloat {
+        max(4, 4 * dynamicTypeSize.scaleFactor)
+    }
+    
+    private var dynamicSectionSpacing: CGFloat {
+        16 * dynamicTypeSize.scaleFactor
+    }
     
     var body: some View {
         NavigationStack {
-            VStack(spacing: 16) {
+            VStack(spacing: dynamicSectionSpacing) {
                 MultiDatePicker("Select Dates", selection: $selectedDates)
                     .frame(maxHeight: .infinity)
                     .padding()
                 
                 Text(summaryText)
-                    .font(.subheadline)
+                    .font(.system(size: dynamicSubheadlineSize))
                     .foregroundStyle(.secondary)
                     .padding(.bottom)
             }
@@ -20,13 +41,15 @@ struct CustomRepeatSelectionView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .principal) {
-                    VStack(spacing: 4) {
+                    VStack(spacing: dynamicSpacing) {
                         Text("Select Dates")
-                            .font(.system(size: 40, weight: .bold, design: .rounded))
+                            .font(.system(size: dynamicTitleSize, weight: .bold, design: .rounded))
                             .foregroundColor(.primary)
                             .multilineTextAlignment(.center)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
                         Image(systemName: "calendar")
-                            .font(.system(size: 16, weight: .medium))
+                            .font(.system(size: dynamicIconSize, weight: .medium))
                             .foregroundStyle(.secondary)
                     }
                     .padding(.top, 32)

@@ -7,6 +7,7 @@ public struct TitleBarView: View {
     public let topPadding: CGFloat
     public let iconScale: CGFloat
     public let fontScale: CGFloat
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     public init(title: String,
                 iconSystemName: String,
@@ -22,7 +23,7 @@ public struct TitleBarView: View {
         self.iconScale = iconScale
     }
 
-    private var dynamicFontSize: CGFloat {
+    private var baseFontSize: CGFloat {
         let width = UIScreen.main.bounds.width
         switch width {
         case ..<340:
@@ -37,6 +38,7 @@ public struct TitleBarView: View {
             return 40
         }
     }
+    
     private var autoScale: CGFloat {
         let width = UIScreen.main.bounds.width
         let limit: Int
@@ -52,13 +54,23 @@ public struct TitleBarView: View {
         else if over <= 6 { return 0.96 }
         else { return 0.92 }
     }
+    
+    private var dynamicTitleSize: CGFloat {
+        baseFontSize * fontScale * autoScale * dynamicTypeSize.scaleFactor
+    }
+    
+    private var dynamicIconSize: CGFloat {
+        max(14, dynamicTitleSize * 0.4 * iconScale)
+    }
+    
+    private var dynamicSpacing: CGFloat {
+        4 * dynamicTypeSize.scaleFactor
+    }
 
     public var body: some View {
-        let titleSize = dynamicFontSize * fontScale * autoScale
-        let iconSize = max(14, titleSize * 0.4 * iconScale)
-        VStack(spacing: 4) {
+        VStack(spacing: dynamicSpacing) {
             Text(title)
-                .font(.system(size: titleSize, weight: .bold, design: .rounded))
+                .font(.system(size: dynamicTitleSize, weight: .bold, design: .rounded))
                 .foregroundColor(.primary)
                 .multilineTextAlignment(.center)
                 .lineLimit(1)
@@ -66,7 +78,7 @@ public struct TitleBarView: View {
                 .truncationMode(.tail)
                 .allowsTightening(true)
             Image(systemName: iconSystemName)
-                .font(.system(size: iconSize, weight: .medium))
+                .font(.system(size: dynamicIconSize, weight: .medium))
                 .foregroundStyle(
                     LinearGradient(
                         colors: gradientColors,

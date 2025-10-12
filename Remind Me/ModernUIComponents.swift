@@ -281,23 +281,36 @@ public func conciseRelativeDateTime(_ date: Date) -> String {
 struct ModernFormSection<Content: View>: View {
     let title: String
     let content: Content
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     
     init(title: String, @ViewBuilder content: () -> Content) {
         self.title = title
         self.content = content()
     }
     
+    private var dynamicTitleSize: CGFloat {
+        20 * min(dynamicTypeSize.scaleFactor, 1.3)
+    }
+    
+    private var dynamicSpacing: CGFloat {
+        16 * min(dynamicTypeSize.scaleFactor, 1.3)
+    }
+    
+    private var dynamicPadding: CGFloat {
+        20 * min(dynamicTypeSize.scaleFactor, 1.3)
+    }
+    
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: dynamicSpacing) {
             Text(title)
-                .font(.system(size: 20, weight: .semibold, design: .rounded))
+                .font(.system(size: dynamicTitleSize, weight: .semibold, design: .rounded))
                 .foregroundColor(.primary)
                 .padding(.horizontal, 4)
             
-            VStack(spacing: 12) {
+            VStack(spacing: 12 * dynamicTypeSize.scaleFactor) {
                 content
             }
-            .padding(20)
+            .padding(dynamicPadding)
             .background {
                 RoundedRectangle(cornerRadius: 16)
                     .fill(.ultraThinMaterial)
@@ -311,20 +324,37 @@ struct ModernTextField: View {
     let title: String
     @Binding var text: String
     var centered: Bool = false
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    
+    private var dynamicTitleSize: CGFloat {
+        14 * min(dynamicTypeSize.scaleFactor, 1.3)
+    }
+    
+    private var dynamicTextSize: CGFloat {
+        16 * min(dynamicTypeSize.scaleFactor, 1.3)
+    }
+    
+    private var dynamicSpacing: CGFloat {
+        8 * min(dynamicTypeSize.scaleFactor, 1.3)
+    }
+    
+    private var dynamicPadding: CGFloat {
+        max(12, 12 * min(dynamicTypeSize.scaleFactor, 1.3))
+    }
     
     var body: some View {
-        VStack(alignment: centered ? .center : .leading, spacing: 8) {
+        VStack(alignment: centered ? .center : .leading, spacing: dynamicSpacing) {
             Text(title)
-                .font(.system(size: 14, weight: .medium))
+                .font(.system(size: dynamicTitleSize, weight: .medium))
                 .foregroundColor(.secondary)
                 .frame(maxWidth: .infinity, alignment: centered ? .center : .leading)
             
             TextField("", text: $text)
                 .textFieldStyle(.plain)
-                .font(.system(size: 16, weight: .medium))
+                .font(.system(size: dynamicTextSize, weight: .medium))
                 .multilineTextAlignment(centered ? .center : .leading)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
+                .padding(.horizontal, dynamicPadding + 4)
+                .padding(.vertical, dynamicPadding)
                 .background {
                     RoundedRectangle(cornerRadius: 12)
                         .fill(.regularMaterial)
@@ -339,11 +369,24 @@ struct ModernDatePicker: View {
     @Binding var selection: Date
     let displayedComponents: DatePickerComponents
     var centered: Bool = false
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    
+    private var dynamicTitleSize: CGFloat {
+        14 * min(dynamicTypeSize.scaleFactor, 1.3)
+    }
+    
+    private var dynamicSpacing: CGFloat {
+        8 * min(dynamicTypeSize.scaleFactor, 1.3)
+    }
+    
+    private var dynamicPadding: CGFloat {
+        max(12, 12 * min(dynamicTypeSize.scaleFactor, 1.3))
+    }
     
     var body: some View {
-        VStack(alignment: centered ? .center : .leading, spacing: 8) {
+        VStack(alignment: centered ? .center : .leading, spacing: dynamicSpacing) {
             Text(title)
-                .font(.system(size: 14, weight: .medium))
+                .font(.system(size: dynamicTitleSize, weight: .medium))
                 .foregroundColor(.secondary)
                 .frame(maxWidth: .infinity, alignment: centered ? .center : .leading)
             
@@ -357,8 +400,8 @@ struct ModernDatePicker: View {
                     .fixedSize()
                 Spacer()
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
+            .padding(.horizontal, dynamicPadding + 4)
+            .padding(.vertical, dynamicPadding)
             .background {
                 RoundedRectangle(cornerRadius: 12)
                     .fill(.regularMaterial)
@@ -373,6 +416,7 @@ struct ModernPicker<T: Hashable, Content: View>: View {
     @Binding var selection: T
     let options: [T]
     let content: (T) -> Content
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     
     init(title: String, selection: Binding<T>, options: [T], @ViewBuilder content: @escaping (T) -> Content) {
         self.title = title
@@ -381,10 +425,22 @@ struct ModernPicker<T: Hashable, Content: View>: View {
         self.content = content
     }
     
+    private var dynamicTitleSize: CGFloat {
+        14 * min(dynamicTypeSize.scaleFactor, 1.3)
+    }
+    
+    private var dynamicSpacing: CGFloat {
+        8 * min(dynamicTypeSize.scaleFactor, 1.3)
+    }
+    
+    private var dynamicPadding: CGFloat {
+        max(12, 12 * min(dynamicTypeSize.scaleFactor, 1.3))
+    }
+    
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: dynamicSpacing) {
             Text(title)
-                .font(.system(size: 14, weight: .medium))
+                .font(.system(size: dynamicTitleSize, weight: .medium))
                 .foregroundColor(.secondary)
             
             Picker("", selection: $selection) {
@@ -396,8 +452,8 @@ struct ModernPicker<T: Hashable, Content: View>: View {
             .onChange(of: selection) { _, _ in
                 Haptics.selectionChanged()
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
+            .padding(.horizontal, dynamicPadding + 4)
+            .padding(.vertical, dynamicPadding)
             .background {
                 RoundedRectangle(cornerRadius: 12)
                     .fill(.regularMaterial)
@@ -412,6 +468,7 @@ struct ModernCenteredPicker<T: Hashable, Content: View>: View {
     @Binding var selection: T
     let options: [T]
     let content: (T) -> Content
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     
     init(title: String, selection: Binding<T>, options: [T], @ViewBuilder content: @escaping (T) -> Content) {
         self.title = title
@@ -420,10 +477,22 @@ struct ModernCenteredPicker<T: Hashable, Content: View>: View {
         self.content = content
     }
     
+    private var dynamicTitleSize: CGFloat {
+        14 * min(dynamicTypeSize.scaleFactor, 1.3)
+    }
+    
+    private var dynamicSpacing: CGFloat {
+        8 * min(dynamicTypeSize.scaleFactor, 1.3)
+    }
+    
+    private var dynamicPadding: CGFloat {
+        max(12, 12 * min(dynamicTypeSize.scaleFactor, 1.3))
+    }
+    
     var body: some View {
-        VStack(alignment: .center, spacing: 8) {
+        VStack(alignment: .center, spacing: dynamicSpacing) {
             Text(title)
-                .font(.system(size: 14, weight: .medium))
+                .font(.system(size: dynamicTitleSize, weight: .medium))
                 .foregroundColor(.secondary)
                 .frame(maxWidth: .infinity, alignment: .center)
             
@@ -436,8 +505,8 @@ struct ModernCenteredPicker<T: Hashable, Content: View>: View {
             .onChange(of: selection) { _, _ in
                 Haptics.selectionChanged()
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
+            .padding(.horizontal, dynamicPadding + 4)
+            .padding(.vertical, dynamicPadding)
             .background {
                 RoundedRectangle(cornerRadius: 12)
                     .fill(.regularMaterial)
@@ -452,6 +521,7 @@ struct ModernStepper: View {
     @Binding var value: Int
     let range: ClosedRange<Int>
     let suffix: String?
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     
     init(title: String, value: Binding<Int>, range: ClosedRange<Int>, suffix: String? = nil) {
         self.title = title
@@ -460,10 +530,34 @@ struct ModernStepper: View {
         self.suffix = suffix
     }
     
+    private var dynamicTitleSize: CGFloat {
+        14 * min(dynamicTypeSize.scaleFactor, 1.3)
+    }
+    
+    private var dynamicSpacing: CGFloat {
+        8 * min(dynamicTypeSize.scaleFactor, 1.3)
+    }
+    
+    private var dynamicPadding: CGFloat {
+        max(12, 12 * min(dynamicTypeSize.scaleFactor, 1.3))
+    }
+    
+    private var dynamicButtonSize: CGFloat {
+        max(32, 32 * min(dynamicTypeSize.scaleFactor, 1.2)) // Cap scaling for buttons
+    }
+    
+    private var dynamicValueSize: CGFloat {
+        18 * min(dynamicTypeSize.scaleFactor, 1.3)
+    }
+    
+    private var dynamicSuffixSize: CGFloat {
+        12 * min(dynamicTypeSize.scaleFactor, 1.3)
+    }
+    
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: dynamicSpacing) {
             Text(title)
-                .font(.system(size: 14, weight: .medium))
+                .font(.system(size: dynamicTitleSize, weight: .medium))
                 .foregroundColor(.secondary)
             
             HStack {
@@ -474,9 +568,9 @@ struct ModernStepper: View {
                     }
                 } label: {
                     Image(systemName: "minus")
-                        .font(.system(size: 14, weight: .medium))
+                        .font(.system(size: min(14, 14 * dynamicTypeSize.scaleFactor), weight: .medium))
                         .foregroundColor(.white)
-                        .frame(width: 32, height: 32)
+                        .frame(width: dynamicButtonSize, height: dynamicButtonSize)
                         .background {
                             Circle()
                                 .fill(value > range.lowerBound ? .blue : .secondary)
@@ -486,15 +580,20 @@ struct ModernStepper: View {
                 
                 Spacer()
                 
-                VStack(spacing: 2) {
+                VStack(spacing: 2 * dynamicTypeSize.scaleFactor) {
                     Text("\(value)")
-                        .font(.system(size: 18, weight: .semibold, design: .monospaced))
+                        .font(.system(size: dynamicValueSize, weight: .semibold, design: .monospaced))
                         .foregroundColor(.primary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
                     
                     if let suffix = suffix {
                         Text(suffix)
-                            .font(.system(size: 12, weight: .medium))
+                            .font(.system(size: dynamicSuffixSize, weight: .medium))
                             .foregroundColor(.secondary)
+                            .lineLimit(2)
+                            .multilineTextAlignment(.center)
+                            .minimumScaleFactor(0.9)
                     }
                 }
                 
@@ -507,9 +606,9 @@ struct ModernStepper: View {
                     }
                 } label: {
                     Image(systemName: "plus")
-                        .font(.system(size: 14, weight: .medium))
+                        .font(.system(size: min(14, 14 * dynamicTypeSize.scaleFactor), weight: .medium))
                         .foregroundColor(.white)
-                        .frame(width: 32, height: 32)
+                        .frame(width: dynamicButtonSize, height: dynamicButtonSize)
                         .background {
                             Circle()
                                 .fill(value < range.upperBound ? .blue : .secondary)
@@ -517,8 +616,8 @@ struct ModernStepper: View {
                 }
                 .disabled(value >= range.upperBound)
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
+            .padding(.horizontal, dynamicPadding + 4)
+            .padding(.vertical, dynamicPadding)
             .background {
                 RoundedRectangle(cornerRadius: 12)
                     .fill(.regularMaterial)
@@ -532,27 +631,46 @@ struct ModernActionRow: View {
     let title: String
     let icon: String
     let action: () -> Void
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    
+    private var dynamicTitleSize: CGFloat {
+        16 * min(dynamicTypeSize.scaleFactor, 1.3)
+    }
+    
+    private var dynamicIconSize: CGFloat {
+        min(16, 16 * dynamicTypeSize.scaleFactor)
+    }
+    
+    private var dynamicSpacing: CGFloat {
+        12 * min(dynamicTypeSize.scaleFactor, 1.3)
+    }
+    
+    private var dynamicPadding: CGFloat {
+        max(12, 12 * min(dynamicTypeSize.scaleFactor, 1.3))
+    }
     
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 12) {
+            HStack(spacing: dynamicSpacing) {
                 Image(systemName: icon)
-                    .font(.system(size: 16, weight: .medium))
+                    .font(.system(size: dynamicIconSize, weight: .medium))
                     .foregroundColor(.blue)
                     .frame(width: 24, height: 24)
                 
                 Text(title)
-                    .font(.system(size: 16, weight: .medium))
+                    .font(.system(size: dynamicTitleSize, weight: .medium))
                     .foregroundColor(.primary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
                 
                 Spacer()
                 
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 12, weight: .medium))
+                    .font(.system(size: min(12, 12 * dynamicTypeSize.scaleFactor), weight: .medium))
                     .foregroundColor(.secondary)
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
+            .padding(.horizontal, dynamicPadding + 4)
+            .padding(.vertical, dynamicPadding)
             .background {
                 RoundedRectangle(cornerRadius: 12)
                     .fill(.regularMaterial)
@@ -567,22 +685,42 @@ struct ModernStatusRow: View {
     let icon: String
     let iconColor: Color
     let text: String
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    
+    private var dynamicIconSize: CGFloat {
+        min(14, 14 * dynamicTypeSize.scaleFactor)
+    }
+    
+    private var dynamicTextSize: CGFloat {
+        14 * min(dynamicTypeSize.scaleFactor, 1.3)
+    }
+    
+    private var dynamicSpacing: CGFloat {
+        12 * min(dynamicTypeSize.scaleFactor, 1.3)
+    }
+    
+    private var dynamicPadding: CGFloat {
+        max(10, 10 * min(dynamicTypeSize.scaleFactor, 1.3))
+    }
     
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: dynamicSpacing) {
             Image(systemName: icon)
-                .font(.system(size: 14, weight: .medium))
+                .font(.system(size: dynamicIconSize, weight: .medium))
                 .foregroundColor(iconColor)
                 .frame(width: 24, height: 24)
             
             Text(text)
-                .font(.system(size: 14, weight: .medium))
+                .font(.system(size: dynamicTextSize, weight: .medium))
                 .foregroundColor(.secondary)
+                .lineLimit(nil)
+                .multilineTextAlignment(.leading)
+                .fixedSize(horizontal: false, vertical: true)
             
             Spacer()
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
+        .padding(.horizontal, dynamicPadding + 6)
+        .padding(.vertical, dynamicPadding)
         .background {
             RoundedRectangle(cornerRadius: 12)
                 .fill(iconColor.opacity(0.1))
@@ -594,21 +732,43 @@ struct ModernStatusRow: View {
 struct ModernInfoRow: View {
     let title: String
     let value: String
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    
+    private var dynamicTitleSize: CGFloat {
+        14 * min(dynamicTypeSize.scaleFactor, 1.3)
+    }
+    
+    private var dynamicValueSize: CGFloat {
+        16 * min(dynamicTypeSize.scaleFactor, 1.3)
+    }
+    
+    private var dynamicSpacing: CGFloat {
+        16 * min(dynamicTypeSize.scaleFactor, 1.3)
+    }
+    
+    private var dynamicPadding: CGFloat {
+        max(12, 12 * min(dynamicTypeSize.scaleFactor, 1.3))
+    }
     
     var body: some View {
-        HStack(spacing: 16) {
+        HStack(spacing: dynamicSpacing) {
             Text(title)
-                .font(.system(size: 14, weight: .medium))
+                .font(.system(size: dynamicTitleSize, weight: .medium))
                 .foregroundColor(.secondary)
+                .lineLimit(2)
+                .minimumScaleFactor(0.9)
             
             Spacer()
             
             Text(value)
-                .font(.system(size: 16, weight: .medium))
+                .font(.system(size: dynamicValueSize, weight: .medium))
                 .foregroundColor(.primary)
+                .lineLimit(2)
+                .multilineTextAlignment(.trailing)
+                .minimumScaleFactor(0.8)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
+        .padding(.horizontal, dynamicPadding + 4)
+        .padding(.vertical, dynamicPadding)
         .background {
             RoundedRectangle(cornerRadius: 12)
                 .fill(.regularMaterial)

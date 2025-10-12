@@ -9,41 +9,83 @@ struct AddCustomOccurrenceView: View {
     
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    
     @State private var selectedTime = Date()
     @State private var showingDuplicateAlert = false
     
+    // Dynamic Type scaling properties
+    private var dynamicTitleSize: CGFloat {
+        UIFont.preferredFont(forTextStyle: .headline).pointSize * min(dynamicTypeSize.scaleFactor, 1.3)
+    }
+    
+    private var dynamicSpacing: CGFloat {
+        max(12, 12 * min(dynamicTypeSize.scaleFactor, 1.3))
+    }
+    
+    private var dynamicSectionSpacing: CGFloat {
+        20 * min(dynamicTypeSize.scaleFactor, 1.3)
+    }
+    
+    private var dynamicTopPadding: CGFloat {
+        32 * dynamicTypeSize.scaleFactor
+    }
+    
+    private var dynamicHorizontalPadding: CGFloat {
+        20 * min(dynamicTypeSize.scaleFactor, 1.3)
+    }
+    
+    private var dynamicToolbarTitleSize: CGFloat {
+        40 * min(dynamicTypeSize.scaleFactor, 1.1)
+    }
+    
+    private var dynamicToolbarIconSize: CGFloat {
+        16 * min(dynamicTypeSize.scaleFactor, 1.1)
+    }
+    
+    private var dynamicToolbarSpacing: CGFloat {
+        max(4, 4 * min(dynamicTypeSize.scaleFactor, 1.3))
+    }
+    
+    private var dynamicButtonPadding: CGFloat {
+        max(12, 12 * min(dynamicTypeSize.scaleFactor, 1.3))
+    }
+
     var body: some View {
         ScrollView {
-            VStack(spacing: 20) {
+            VStack(spacing: dynamicSectionSpacing) {
                 // Date selection section
-                VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: dynamicSpacing) {
                     Text("Select Date & Time")
-                        .padding(.top , 32)
-                        .font(.headline)
-                        .padding(.horizontal)
+                        .padding(.top, dynamicTopPadding)
+                        .font(.system(size: dynamicTitleSize, weight: .semibold))
+                        .padding(.horizontal, dynamicHorizontalPadding)
                     
                     // Quick selection buttons
                     ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 12) {
-                            Button("Today") {
-                                setDateToToday()
-                            }
-                            .buttonStyle(.bordered)
-                            .controlSize(.small)
-                            
-                            Button("Tomorrow") {
-                                setDateToTomorrow()
-                            }
-                            .buttonStyle(.bordered)
-                            .controlSize(.small)
-                            
-                            Button("Next Week") {
-                                setDateToNextWeek()
-                            }
-                            .buttonStyle(.bordered)
-                            .controlSize(.small)
+                        HStack(spacing: dynamicSpacing) {
+                    Button("Today") {
+                        setDateToToday()
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .font(.system(size: UIFont.preferredFont(forTextStyle: .footnote).pointSize * min(dynamicTypeSize.scaleFactor, 1.2)))
+                    
+                    Button("Tomorrow") {
+                        setDateToTomorrow()
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .font(.system(size: UIFont.preferredFont(forTextStyle: .footnote).pointSize * min(dynamicTypeSize.scaleFactor, 1.2)))
+                    
+                    Button("Next Week") {
+                        setDateToNextWeek()
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .font(.system(size: UIFont.preferredFont(forTextStyle: .footnote).pointSize * min(dynamicTypeSize.scaleFactor, 1.2)))
                         }
-                        .padding(.horizontal)
+                        .padding(.horizontal, dynamicHorizontalPadding)
                     }
                     
                     // Date picker with custom styling
@@ -54,11 +96,11 @@ struct AddCustomOccurrenceView: View {
                     )
                     .datePickerStyle(.wheel)
                     .labelsHidden()
-                    .padding(.horizontal)
+                    .padding(.horizontal, dynamicHorizontalPadding)
                 }
                 
                 // Bottom button section
-                VStack(spacing: 12) {
+                VStack(spacing: dynamicSpacing) {
                     Button("Add Reminder") {
                         addCustomOccurrence()
                     }
@@ -66,6 +108,7 @@ struct AddCustomOccurrenceView: View {
                     .frame(maxWidth: .infinity)
                     .controlSize(.large)
                     .disabled(templateItem == nil)
+                    .font(.system(size: UIFont.preferredFont(forTextStyle: .body).pointSize * min(dynamicTypeSize.scaleFactor, 1.2)))
                     
                     Button("Cancel") {
                         dismiss()
@@ -73,22 +116,25 @@ struct AddCustomOccurrenceView: View {
                     .buttonStyle(.bordered)
                     .frame(maxWidth: .infinity)
                     .controlSize(.large)
+                    .font(.system(size: UIFont.preferredFont(forTextStyle: .body).pointSize * min(dynamicTypeSize.scaleFactor, 1.2)))
                 }
-                .padding(.horizontal)
-                .padding(.bottom)
+                .padding(.horizontal, dynamicHorizontalPadding)
+                .padding(.bottom, dynamicButtonPadding)
             }
         }
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .principal) {
-                VStack(spacing: 4) {
+                VStack(spacing: dynamicToolbarSpacing) {
                     Text("Add Occurrence")
-                        .font(.system(size: 40, weight: .bold, design: .rounded))
+                        .font(.system(size: dynamicToolbarTitleSize, weight: .bold, design: .rounded))
                         .foregroundColor(.primary)
                         .multilineTextAlignment(.center)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
                     Image(systemName: "calendar.badge.plus")
-                        .font(.system(size: 16, weight: .medium))
+                        .font(.system(size: dynamicToolbarIconSize, weight: .medium))
                         .foregroundStyle(
                             LinearGradient(
                                 colors: [.teal, .blue],

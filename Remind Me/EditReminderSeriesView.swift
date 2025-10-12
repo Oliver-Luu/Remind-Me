@@ -5,6 +5,7 @@ struct EditReminderSeriesView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     let parentID: String
 
@@ -28,6 +29,23 @@ struct EditReminderSeriesView: View {
     @State private var isDeletingSeries = false
     @State private var showDeleteSeriesError = false
     @State private var deleteSeriesErrorMessage = ""
+    
+    // Dynamic Type scaling properties
+    private var dynamicSectionSpacing: CGFloat {
+        20 * min(dynamicTypeSize.scaleFactor, 1.3)
+    }
+    
+    private var dynamicTopPadding: CGFloat {
+        32 * min(dynamicTypeSize.scaleFactor, 1.3)
+    }
+    
+    private var dynamicBottomPadding: CGFloat {
+        40 * min(dynamicTypeSize.scaleFactor, 1.3)
+    }
+    
+    private var dynamicHorizontalPadding: CGFloat {
+        20 * min(dynamicTypeSize.scaleFactor, 1.3)
+    }
 
     var body: some View {
         GeometryReader { geometry in
@@ -56,10 +74,10 @@ struct EditReminderSeriesView: View {
                 
                 ScrollView {
                     // Form sections with glass effect
-                    VStack(spacing: 20) {
+                    VStack(spacing: dynamicSectionSpacing) {
                         // Series Details Section
                         ModernFormSection(title: "Series Details") {
-                            VStack(spacing: 16) {
+                            VStack(spacing: 16 * dynamicTypeSize.scaleFactor) {
                                 ModernTextField(title: "Title", text: $title)
                                 
                                 if repeatFrequency == .custom {
@@ -86,7 +104,7 @@ struct EditReminderSeriesView: View {
 
                         // Repeat Options Section
                         ModernFormSection(title: "Repeat Options") {
-                            VStack(spacing: 16) {
+                            VStack(spacing: 16 * dynamicTypeSize.scaleFactor) {
                                 ModernSelectionRow(
                                     title: "Repeat",
                                     value: repeatFrequency.displayName,
@@ -133,7 +151,7 @@ struct EditReminderSeriesView: View {
 
                         // Notification Options Section
                         ModernFormSection(title: "Notification Options") {
-                            VStack(spacing: 16) {
+                            VStack(spacing: 16 * dynamicTypeSize.scaleFactor) {
                                 ModernSelectionRow(
                                     title: "Follow-up interval",
                                     value: "\(notificationIntervalMinutes) min",
@@ -149,10 +167,10 @@ struct EditReminderSeriesView: View {
                             }
                         }
                     }
-                    .padding(.top, 32)
-                    .padding(.bottom, 40)
+                    .padding(.top, dynamicTopPadding)
+                    .padding(.bottom, dynamicBottomPadding)
                 }
-                .padding(.horizontal, 20)
+                .padding(.horizontal, dynamicHorizontalPadding)
             }
         }
         .navigationTitle("")
@@ -165,6 +183,7 @@ struct EditReminderSeriesView: View {
                     dismiss() 
                 }
                 .foregroundColor(.secondary)
+                .font(.system(size: UIFont.preferredFont(forTextStyle: .body).pointSize * min(dynamicTypeSize.scaleFactor, 1.2)))
             }
             ToolbarItem(placement: .confirmationAction) {
                 Button("Save") { 
@@ -177,13 +196,15 @@ struct EditReminderSeriesView: View {
                     (title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || (!hasChanges && !selectionModified)) ? 
                     .secondary : .indigo
                 )
+                .font(.system(size: UIFont.preferredFont(forTextStyle: .body).pointSize * min(dynamicTypeSize.scaleFactor, 1.2)))
             }
             ToolbarItem(placement: .principal) {
                 TitleBarView(
                     title: "Edit Series",
                     iconSystemName: "repeat.circle.fill",
                     gradientColors: [.indigo, .purple],
-                    topPadding: 32
+                    topPadding: 32,
+                    fontScale: 1.0
                 )
             }
             ToolbarItem(placement: .bottomBar) {
@@ -191,9 +212,11 @@ struct EditReminderSeriesView: View {
                     Haptics.warning()
                     Task { await deleteSeries() }
                 } label: {
-                    HStack(spacing: 6) {
+                    HStack(spacing: 6 * min(dynamicTypeSize.scaleFactor, 1.2)) {
                         Image(systemName: "trash")
+                            .font(.system(size: UIFont.preferredFont(forTextStyle: .body).pointSize * min(dynamicTypeSize.scaleFactor, 1.2)))
                         Text("Delete Series")
+                            .font(.system(size: UIFont.preferredFont(forTextStyle: .body).pointSize * min(dynamicTypeSize.scaleFactor, 1.2)))
                     }
                 }
                 .disabled(isDeletingSeries)
@@ -520,28 +543,54 @@ struct ModernSelectionRow: View {
     let title: String
     let value: String
     let action: () -> Void
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    
+    private var dynamicTitleSize: CGFloat {
+        14 * min(dynamicTypeSize.scaleFactor, 1.3)
+    }
+    
+    private var dynamicValueSize: CGFloat {
+        16 * min(dynamicTypeSize.scaleFactor, 1.3)
+    }
+    
+    private var dynamicIconSize: CGFloat {
+        12 * min(dynamicTypeSize.scaleFactor, 1.3)
+    }
+    
+    private var dynamicSpacing: CGFloat {
+        16 * min(dynamicTypeSize.scaleFactor, 1.3)
+    }
+    
+    private var dynamicPadding: CGFloat {
+        max(12, 12 * min(dynamicTypeSize.scaleFactor, 1.3))
+    }
     
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 16) {
+            HStack(spacing: dynamicSpacing) {
                 Text(title)
-                    .font(.system(size: 14, weight: .medium))
+                    .font(.system(size: dynamicTitleSize, weight: .medium))
                     .foregroundColor(.secondary)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.9)
                 
                 Spacer()
                 
-                HStack(spacing: 8) {
+                HStack(spacing: 8 * dynamicTypeSize.scaleFactor) {
                     Text(value)
-                        .font(.system(size: 16, weight: .medium))
+                        .font(.system(size: dynamicValueSize, weight: .medium))
                         .foregroundColor(.primary)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.trailing)
+                        .minimumScaleFactor(0.8)
                     
                     Image(systemName: "chevron.up.chevron.down")
-                        .font(.system(size: 12, weight: .medium))
+                        .font(.system(size: dynamicIconSize, weight: .medium))
                         .foregroundColor(.secondary)
                 }
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
+            .padding(.horizontal, dynamicPadding + 4)
+            .padding(.vertical, dynamicPadding)
             .background {
                 RoundedRectangle(cornerRadius: 12)
                     .fill(.regularMaterial)
@@ -564,3 +613,4 @@ struct ModernSelectionRow: View {
     return NavigationStack { EditReminderSeriesView(parentID: parent) }
         .modelContainer(container)
 }
+

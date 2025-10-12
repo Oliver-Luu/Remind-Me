@@ -6,6 +6,60 @@ struct SettingsView: View {
     @AppStorage("settings.hapticsLevel") private var hapticsLevel: String = HapticLevel.system.rawValue
     @AppStorage("settings.appearance") private var appearance: String = "system"
     @EnvironmentObject private var notificationManager: NotificationManager
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    
+    // Dynamic Type scaling properties
+    private var dynamicSectionSpacing: CGFloat {
+        24 * min(dynamicTypeSize.scaleFactor, 1.2)
+    }
+    
+    private var dynamicFormSpacing: CGFloat {
+        20 * min(dynamicTypeSize.scaleFactor, 1.2)
+    }
+    
+    private var dynamicTopPadding: CGFloat {
+        32 * min(dynamicTypeSize.scaleFactor, 1.2)
+    }
+    
+    private var dynamicHorizontalPadding: CGFloat {
+        20 * min(dynamicTypeSize.scaleFactor, 1.2)
+    }
+    
+    private var dynamicMenuSpacing: CGFloat {
+        16 * min(dynamicTypeSize.scaleFactor, 1.2)
+    }
+    
+    private var dynamicMenuPadding: CGFloat {
+        max(12, 12 * min(dynamicTypeSize.scaleFactor, 1.2))
+    }
+    
+    private var dynamicButtonSpacing: CGFloat {
+        10 * min(dynamicTypeSize.scaleFactor, 1.2)
+    }
+    
+    private var dynamicButtonVerticalPadding: CGFloat {
+        14 * min(dynamicTypeSize.scaleFactor, 1.2)
+    }
+    
+    private var dynamicMenuTitleSize: CGFloat {
+        14 * min(dynamicTypeSize.scaleFactor, 1.2)
+    }
+    
+    private var dynamicMenuValueSize: CGFloat {
+        16 * min(dynamicTypeSize.scaleFactor, 1.2)
+    }
+    
+    private var dynamicMenuIconSize: CGFloat {
+        12 * min(dynamicTypeSize.scaleFactor, 1.2)
+    }
+    
+    private var dynamicButtonTitleSize: CGFloat {
+        16 * min(dynamicTypeSize.scaleFactor, 1.2)
+    }
+    
+    private var dynamicButtonIconSize: CGFloat {
+        16 * min(dynamicTypeSize.scaleFactor, 1.2)
+    }
 
     private func labelForInApp(_ key: String) -> String {
         switch key {
@@ -72,32 +126,37 @@ struct SettingsView: View {
                 )
 
                 ScrollView {
-                    VStack(spacing: 24) {
-                        VStack(spacing: 20) {
+                    VStack(spacing: dynamicSectionSpacing) {
+                        VStack(spacing: dynamicFormSpacing) {
                             ModernFormSection(title: "In-App Notifications") {
-                                VStack(spacing: 16) {
+                                VStack(spacing: 16 * min(dynamicTypeSize.scaleFactor, 1.2)) {
                                     Menu {
                                         Button("Default (Bell)") { inAppSound = "default"; Haptics.impact(.light) }
                                         Button("Tri-tone") { inAppSound = "triTone"; Haptics.impact(.light) }
                                         Button("Bell") { inAppSound = "bell"; Haptics.impact(.light) }
                                         Button("None") { inAppSound = "none"; Haptics.impact(.light) }
                                     } label: {
-                                        HStack(spacing: 16) {
+                                        HStack(spacing: dynamicMenuSpacing) {
                                             Text("Sound")
-                                                .font(.system(size: 14, weight: .medium))
+                                                .font(.system(size: dynamicMenuTitleSize, weight: .medium))
                                                 .foregroundColor(.secondary)
+                                                .lineLimit(1)
+                                                .minimumScaleFactor(0.9)
                                             Spacer()
-                                            HStack(spacing: 8) {
+                                            HStack(spacing: 8 * min(dynamicTypeSize.scaleFactor, 1.2)) {
                                                 Text(labelForInApp(inAppSound))
-                                                    .font(.system(size: 16, weight: .medium))
+                                                    .font(.system(size: dynamicMenuValueSize, weight: .medium))
                                                     .foregroundColor(.primary)
+                                                    .lineLimit(2)
+                                                    .multilineTextAlignment(.trailing)
+                                                    .minimumScaleFactor(0.8)
                                                 Image(systemName: "chevron.up.chevron.down")
-                                                    .font(.system(size: 12, weight: .medium))
+                                                    .font(.system(size: dynamicMenuIconSize, weight: .medium))
                                                     .foregroundColor(.secondary)
                                             }
                                         }
-                                        .padding(.horizontal, 16)
-                                        .padding(.vertical, 12)
+                                        .padding(.horizontal, dynamicMenuPadding + 4)
+                                        .padding(.vertical, dynamicMenuPadding)
                                         .background {
                                             RoundedRectangle(cornerRadius: 12)
                                                 .fill(.regularMaterial)
@@ -109,15 +168,17 @@ struct SettingsView: View {
                                     Button {
                                         NotificationSoundPlayer.shared.playReminderSound()
                                     } label: {
-                                        HStack(spacing: 10) {
+                                        HStack(spacing: dynamicButtonSpacing) {
                                             Image(systemName: "speaker.wave.2.fill")
-                                                .font(.system(size: 16, weight: .semibold))
+                                                .font(.system(size: dynamicButtonIconSize, weight: .semibold))
                                             Text("Play Test Sound")
-                                                .font(.system(size: 16, weight: .semibold, design: .rounded))
+                                                .font(.system(size: dynamicButtonTitleSize, weight: .semibold, design: .rounded))
+                                                .lineLimit(1)
+                                                .minimumScaleFactor(0.8)
                                         }
                                         .foregroundColor(.white)
                                         .frame(maxWidth: .infinity)
-                                        .padding(.vertical, 14)
+                                        .padding(.vertical, dynamicButtonVerticalPadding)
                                         .background {
                                             RoundedRectangle(cornerRadius: 14)
                                                 .fill(
@@ -134,27 +195,32 @@ struct SettingsView: View {
                             }
 
                             ModernFormSection(title: "System Notifications") {
-                                VStack(spacing: 16) {
+                                VStack(spacing: 16 * min(dynamicTypeSize.scaleFactor, 1.2)) {
                                     Menu {
                                         Button("Default") { pushSound = "default"; Haptics.impact(.light) }
                                         Button("None") { pushSound = "none"; Haptics.impact(.light) }
                                     } label: {
-                                        HStack(spacing: 16) {
+                                        HStack(spacing: dynamicMenuSpacing) {
                                             Text("Sound")
-                                                .font(.system(size: 14, weight: .medium))
+                                                .font(.system(size: dynamicMenuTitleSize, weight: .medium))
                                                 .foregroundColor(.secondary)
+                                                .lineLimit(1)
+                                                .minimumScaleFactor(0.9)
                                             Spacer()
-                                            HStack(spacing: 8) {
+                                            HStack(spacing: 8 * min(dynamicTypeSize.scaleFactor, 1.2)) {
                                                 Text(labelForPush(pushSound))
-                                                    .font(.system(size: 16, weight: .medium))
+                                                    .font(.system(size: dynamicMenuValueSize, weight: .medium))
                                                     .foregroundColor(.primary)
+                                                    .lineLimit(2)
+                                                    .multilineTextAlignment(.trailing)
+                                                    .minimumScaleFactor(0.8)
                                                 Image(systemName: "chevron.up.chevron.down")
-                                                    .font(.system(size: 12, weight: .medium))
+                                                    .font(.system(size: dynamicMenuIconSize, weight: .medium))
                                                     .foregroundColor(.secondary)
                                             }
                                         }
-                                        .padding(.horizontal, 16)
-                                        .padding(.vertical, 12)
+                                        .padding(.horizontal, dynamicMenuPadding + 4)
+                                        .padding(.vertical, dynamicMenuPadding)
                                         .background {
                                             RoundedRectangle(cornerRadius: 12)
                                                 .fill(.regularMaterial)
@@ -166,15 +232,17 @@ struct SettingsView: View {
                                     Button {
                                         Task { await notificationManager.scheduleTestNotification() }
                                     } label: {
-                                        HStack(spacing: 10) {
+                                        HStack(spacing: dynamicButtonSpacing) {
                                             Image(systemName: "bell.badge.fill")
-                                                .font(.system(size: 16, weight: .semibold))
+                                                .font(.system(size: dynamicButtonIconSize, weight: .semibold))
                                             Text("Play Test Notification")
-                                                .font(.system(size: 16, weight: .semibold, design: .rounded))
+                                                .font(.system(size: dynamicButtonTitleSize, weight: .semibold, design: .rounded))
+                                                .lineLimit(1)
+                                                .minimumScaleFactor(0.8)
                                         }
                                         .foregroundColor(.white)
                                         .frame(maxWidth: .infinity)
-                                        .padding(.vertical, 14)
+                                        .padding(.vertical, dynamicButtonVerticalPadding)
                                         .background {
                                             RoundedRectangle(cornerRadius: 14)
                                                 .fill(
@@ -199,29 +267,34 @@ struct SettingsView: View {
                             }
 
                             ModernFormSection(title: "Haptics") {
-                                VStack(spacing: 16) {
+                                VStack(spacing: 16 * min(dynamicTypeSize.scaleFactor, 1.2)) {
                                     Menu {
                                         Button("Off") { hapticsLevel = HapticLevel.off.rawValue; Haptics.impact(.light) }
                                         Button("Light") { hapticsLevel = HapticLevel.light.rawValue; Haptics.impact(.light) }
                                         Button("Medium") { hapticsLevel = HapticLevel.medium.rawValue; Haptics.impact(.light) }
                                         Button("Heavy") { hapticsLevel = HapticLevel.heavy.rawValue; Haptics.impact(.light) }
                                     } label: {
-                                        HStack(spacing: 16) {
+                                        HStack(spacing: dynamicMenuSpacing) {
                                             Text("Feedback Level")
-                                                .font(.system(size: 14, weight: .medium))
+                                                .font(.system(size: dynamicMenuTitleSize, weight: .medium))
                                                 .foregroundColor(.secondary)
+                                                .lineLimit(2)
+                                                .minimumScaleFactor(0.9)
                                             Spacer()
-                                            HStack(spacing: 8) {
+                                            HStack(spacing: 8 * min(dynamicTypeSize.scaleFactor, 1.2)) {
                                                 Text(labelForHaptics(hapticsLevel))
-                                                    .font(.system(size: 16, weight: .medium))
+                                                    .font(.system(size: dynamicMenuValueSize, weight: .medium))
                                                     .foregroundColor(.primary)
+                                                    .lineLimit(2)
+                                                    .multilineTextAlignment(.trailing)
+                                                    .minimumScaleFactor(0.8)
                                                 Image(systemName: "chevron.up.chevron.down")
-                                                    .font(.system(size: 12, weight: .medium))
+                                                    .font(.system(size: dynamicMenuIconSize, weight: .medium))
                                                     .foregroundColor(.secondary)
                                             }
                                         }
-                                        .padding(.horizontal, 16)
-                                        .padding(.vertical, 12)
+                                        .padding(.horizontal, dynamicMenuPadding + 4)
+                                        .padding(.vertical, dynamicMenuPadding)
                                         .background {
                                             RoundedRectangle(cornerRadius: 12)
                                                 .fill(.regularMaterial)
@@ -250,15 +323,17 @@ struct SettingsView: View {
                                             Haptics.selectionChanged()
                                         }
                                     } label: {
-                                        HStack(spacing: 10) {
+                                        HStack(spacing: dynamicButtonSpacing) {
                                             Image(systemName: "hand.tap.fill")
-                                                .font(.system(size: 16, weight: .semibold))
+                                                .font(.system(size: dynamicButtonIconSize, weight: .semibold))
                                             Text("Play Test Haptic")
-                                                .font(.system(size: 16, weight: .semibold, design: .rounded))
+                                                .font(.system(size: dynamicButtonTitleSize, weight: .semibold, design: .rounded))
+                                                .lineLimit(1)
+                                                .minimumScaleFactor(0.8)
                                         }
                                         .foregroundColor(.white)
                                         .frame(maxWidth: .infinity)
-                                        .padding(.vertical, 14)
+                                        .padding(.vertical, dynamicButtonVerticalPadding)
                                         .background {
                                             RoundedRectangle(cornerRadius: 14)
                                                 .fill(
@@ -275,28 +350,32 @@ struct SettingsView: View {
                             }
 
                             ModernFormSection(title: "Appearance") {
-                                VStack(spacing: 16) {
+                                VStack(spacing: 16 * min(dynamicTypeSize.scaleFactor, 1.2)) {
                                     Menu {
                                         Button("System") { appearance = "system"; Haptics.selectionChanged() }
                                         Button("Light") { appearance = "light"; Haptics.selectionChanged() }
                                         Button("Dark") { appearance = "dark"; Haptics.selectionChanged() }
                                     } label: {
-                                        HStack(spacing: 16) {
+                                        HStack(spacing: dynamicMenuSpacing) {
                                             Text("Theme")
-                                                .font(.system(size: 14, weight: .medium))
+                                                .font(.system(size: dynamicMenuTitleSize, weight: .medium))
                                                 .foregroundColor(.secondary)
+                                                .lineLimit(1)
+                                                .minimumScaleFactor(0.9)
                                             Spacer()
-                                            HStack(spacing: 8) {
+                                            HStack(spacing: 8 * min(dynamicTypeSize.scaleFactor, 1.2)) {
                                                 Text(appearanceLabel(appearance))
-                                                    .font(.system(size: 16, weight: .medium))
+                                                    .font(.system(size: dynamicMenuValueSize, weight: .medium))
                                                     .foregroundColor(.primary)
+                                                    .lineLimit(1)
+                                                    .minimumScaleFactor(0.8)
                                                 Image(systemName: "chevron.up.chevron.down")
-                                                    .font(.system(size: 12, weight: .medium))
+                                                    .font(.system(size: dynamicMenuIconSize, weight: .medium))
                                                     .foregroundColor(.secondary)
                                             }
                                         }
-                                        .padding(.horizontal, 16)
-                                        .padding(.vertical, 12)
+                                        .padding(.horizontal, dynamicMenuPadding + 4)
+                                        .padding(.vertical, dynamicMenuPadding)
                                         .background {
                                             RoundedRectangle(cornerRadius: 12)
                                                 .fill(.regularMaterial)
@@ -307,8 +386,8 @@ struct SettingsView: View {
                                 }
                             }
                         }
-                        .padding(.top, 32)
-                        .padding(.horizontal, 20)
+                        .padding(.top, dynamicTopPadding)
+                        .padding(.horizontal, dynamicHorizontalPadding)
                         .frame(minHeight: geometry.size.height - 100)
                     }
                 }
@@ -322,7 +401,8 @@ struct SettingsView: View {
                     title: "Settings",
                     iconSystemName: "gearshape.fill",
                     gradientColors: [.blue, .purple],
-                    topPadding: 32
+                    topPadding: 32,
+                    fontScale: min(dynamicTypeSize.scaleFactor, 1.1)
                 )
             }
         }
@@ -336,3 +416,4 @@ struct SettingsView: View {
             .environmentObject(InAppNotificationManager())
     }
 }
+

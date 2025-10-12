@@ -145,7 +145,7 @@ struct ReminderSeriesDetailView: View {
                     iconSystemName: "repeat.circle.fill",
                     gradientColors: [.teal, .blue],
                     topPadding: 32,
-                    fontScale: seriesTitleScale
+                    fontScale: 1.0
                 )
             }
         }
@@ -515,3 +515,4 @@ struct ReminderDetailCard: View {
     return NavigationStack { ReminderSeriesDetailView(parentID: parent) }
         .modelContainer(container)
 }
+

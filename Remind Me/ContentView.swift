@@ -14,6 +14,9 @@ struct ContentView: View {
     @State private var isPresentingAddReminder = false
     @State private var showingNotificationAlert = false
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @State private var settingsButtonScale = 1.0
+    @State private var settingsHapticFired = false
 
     var body: some View {
         NavigationStack {
@@ -100,29 +103,62 @@ struct ContentView: View {
                     NavigationLink {
                         SettingsView().modifier(BackHapticToolbar())
                     } label: {
-                        Image(systemName: "gearshape.fill")
-                            .font(.system(size: 18, weight: .semibold))
-                            .foregroundColor(.white)
-                            .frame(width: 36, height: 36)
-                            .background {
-                                Circle()
-                                    .fill(
-                                        LinearGradient(
-                                            colors: [.blue, .purple],
-                                            startPoint: .topLeading,
-                                            endPoint: .bottomTrailing
-                                        )
+                        ZStack {
+                            // Background circle that scales appropriately with Dynamic Type
+                            Circle()
+                                .fill(
+                                    LinearGradient(
+                                        colors: [.blue, .purple],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
                                     )
-                                    .shadow(color: .blue.opacity(0.3), radius: 8, x: 0, y: 4)
-                            }
-                            .clipShape(Circle())
+                                )
+                                .frame(width: dynamicButtonSize(for: 28), height: dynamicButtonSize(for: 28))
+                                .shadow(color: .blue.opacity(0.3), radius: 4, x: 0, y: 2)
+                            
+                            // Icon that scales with Dynamic Type up to "large" size
+                            Image(systemName: "gearshape.fill")
+                                .font(.system(size: dynamicIconSize(for: 16), weight: .semibold))
+                                .foregroundColor(.white)
+                                .scaleEffect(settingsButtonScale)
+                        }
+                        .padding(.vertical, 2)
                     }
                     .buttonStyle(.plain)
-                    .buttonBorderShape(.circle)
-                    .simultaneousGesture(TapGesture().onEnded { Haptics.impact(.light) })
+                    .simultaneousGesture(
+                        DragGesture(minimumDistance: 0)
+                            .onChanged { _ in
+                                if !settingsHapticFired {
+                                    Haptics.impact(.light)
+                                    settingsHapticFired = true
+                                }
+                                withAnimation(.easeInOut(duration: 0.08)) {
+                                    settingsButtonScale = 0.94
+                                }
+                            }
+                            .onEnded { _ in
+                                withAnimation(.easeInOut(duration: 0.1)) {
+                                    settingsButtonScale = 1.0
+                                }
+                                settingsHapticFired = false
+                            }
+                    )
+                    .accessibilityLabel("Settings")
+                    .accessibilityHint("Opens app settings")
                 }
             }
         }
+    }
+    
+    // Dynamic Type scaling helpers
+    private func dynamicIconSize(for baseSize: CGFloat) -> CGFloat {
+        let scaleFactor = min(dynamicTypeSize.scaleFactor, 1.3) // Raised cap to reflect new baseline
+        return baseSize * scaleFactor
+    }
+    
+    private func dynamicButtonSize(for baseSize: CGFloat) -> CGFloat {
+        let scaleFactor = min(dynamicTypeSize.scaleFactor, 1.3) // Raised cap to reflect new baseline
+        return baseSize * scaleFactor
     }
 
 }
@@ -131,25 +167,30 @@ struct ContentView: View {
 
 struct HeaderSection: View {
     let screenWidth: CGFloat
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     
     private var dynamicIconSize: CGFloat {
+        let baseSize: CGFloat
         switch screenWidth {
-        case ..<340: return 100
-        case ..<390: return 110
-        case ..<430: return 120
-        case ..<600: return 130
-        default: return 140
+        case ..<340: baseSize = 100
+        case ..<390: baseSize = 110
+        case ..<430: baseSize = 120
+        case ..<600: baseSize = 130
+        default: baseSize = 140
         }
+        return baseSize * dynamicTypeSize.scaleFactor
     }
     
     private var dynamicTitleSize: CGFloat {
+        let baseSize: CGFloat
         switch screenWidth {
-        case ..<340: return 36
-        case ..<390: return 40
-        case ..<430: return 44
-        case ..<600: return 48
-        default: return 52
+        case ..<340: baseSize = 36
+        case ..<390: baseSize = 40
+        case ..<430: baseSize = 44
+        case ..<600: baseSize = 48
+        default: baseSize = 52
         }
+        return baseSize * dynamicTypeSize.scaleFactor
     }
     
     var body: some View {
@@ -189,12 +230,28 @@ struct HeaderSection: View {
                         endPoint: .trailing
                     )
                 )
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+                .allowsTightening(true)
         }
         .padding(.horizontal)
     }
 }
 
 struct TimeDisplaySection: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    
+    private var dynamicTimeSize: CGFloat {
+        36 * dynamicTypeSize.scaleFactor
+    }
+    
+    private var dynamicDateSize: CGFloat {
+        18 * dynamicTypeSize.scaleFactor
+    }
+    
+    private var dynamicPadding: CGFloat {
+        24 * dynamicTypeSize.scaleFactor
+    }
     
     var body: some View {
         VStack(spacing: 12) {
@@ -203,13 +260,13 @@ struct TimeDisplaySection: View {
                 TimelineView(.periodic(from: .now, by: 1)) { context in
                     VStack(spacing: 4) {
                         Text(formattedTime(context.date))
-                            .font(.system(size: 36, weight: .bold, design: .monospaced))
+                            .font(.system(size: dynamicTimeSize, weight: .bold, design: .monospaced))
                             .foregroundColor(.primary)
                             .lineLimit(1)
                             .minimumScaleFactor(0.5)
                         
                         Text(formattedDate(context.date))
-                            .font(.system(size: 18, weight: .medium, design: .rounded))
+                            .font(.system(size: dynamicDateSize, weight: .medium, design: .rounded))
                             .foregroundColor(.secondary)
                             .lineLimit(2)
                             .multilineTextAlignment(.center)
@@ -217,8 +274,8 @@ struct TimeDisplaySection: View {
                     }
                 }
             }
-            .padding(.horizontal, 24)
-            .padding(.vertical, 16)
+            .padding(.horizontal, dynamicPadding)
+            .padding(.vertical, 16 * dynamicTypeSize.scaleFactor)
             .background {
                 RoundedRectangle(cornerRadius: 20)
                     .fill(.ultraThinMaterial)
@@ -253,11 +310,12 @@ struct TimeDisplaySection: View {
 
 struct NotificationStatusView: View {
     @State private var bounceAlert = false
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: "exclamationmark.triangle.fill")
-                .font(.system(size: 20, weight: .medium))
+                .font(.system(size: 20 * dynamicTypeSize.scaleFactor, weight: .medium))
                 .foregroundColor(.orange)
                 .scaleEffect(bounceAlert ? 1.2 : 1.0)
                 .animation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true), value: bounceAlert)
@@ -267,18 +325,19 @@ struct NotificationStatusView: View {
             
             VStack(alignment: .leading, spacing: 2) {
                 Text("Notifications Disabled")
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.system(size: 14 * dynamicTypeSize.scaleFactor, weight: .semibold))
                     .foregroundColor(.orange)
                 
                 Text("Enable in iOS System Settings for full functionality")
-                    .font(.caption)
+                    .font(.system(size: UIFont.preferredFont(forTextStyle: .caption1).pointSize * dynamicTypeSize.scaleFactor))
                     .foregroundColor(.secondary)
+                    .lineLimit(nil)
             }
             
             Spacer()
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
+        .padding(.horizontal, 16 * dynamicTypeSize.scaleFactor)
+        .padding(.vertical, 12 * dynamicTypeSize.scaleFactor)
         .background {
             RoundedRectangle(cornerRadius: 12)
                 .fill(.orange.opacity(0.1))
@@ -292,11 +351,25 @@ struct ActionButtonsSection: View {
     @Binding var isPresentingAddReminder: Bool
     @Binding var showingNotificationAlert: Bool
     let notificationManager: NotificationManager
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     
     @State private var remindersButtonScale = 1.0
     @State private var addButtonScale = 1.0
     @State private var calendarButtonScale = 1.0
     @State private var remindersHapticFired = false
+    
+    private var dynamicIconSize: CGFloat {
+        let cappedScale = min(dynamicTypeSize.scaleFactor, 1.3)
+        return 20 * cappedScale
+    }
+    
+    /*
+    private var dynamicTextSize: CGFloat {
+        // Cap scaling to avoid oversized text that could cause clipping
+        let cappedScale = min(dynamicTypeSize.scaleFactor, 1.2)
+        return 18 * cappedScale
+    }
+    */
     
     var body: some View {
         VStack(spacing: 20) {
@@ -306,15 +379,21 @@ struct ActionButtonsSection: View {
             } label: {
                 HStack(spacing: 12) {
                     Image(systemName: "list.bullet.clipboard")
-                        .font(.system(size: 20, weight: .medium))
+                        .font(.system(size: dynamicIconSize, weight: .medium))
                     
                     Text("My Reminders")
-                        .font(.system(size: 18, weight: .semibold, design: .rounded))
+                        .font(.system(.title3, design: .rounded))
+                        .fontWeight(.semibold)
+                        .lineLimit(dynamicTypeSize.scaleFactor >= 1.6 ? 2 : 1)
+                        .minimumScaleFactor(dynamicTypeSize.scaleFactor >= 1.6 ? 1.0 : 0.8)
+                        .multilineTextAlignment(.leading)
+                        .allowsTightening(true)
+                        .layoutPriority(1)
                 }
                 .foregroundColor(.white)
                 .frame(maxWidth: .infinity)
-                .padding(.horizontal, 20)
-                .padding(.vertical, 16)
+                .padding(.horizontal, 20 * dynamicTypeSize.scaleFactor)
+                .padding(.vertical, 16 * dynamicTypeSize.scaleFactor)
                 .background {
                     RoundedRectangle(cornerRadius: 16)
                         .fill(
@@ -355,15 +434,21 @@ struct ActionButtonsSection: View {
             } label: {
                 HStack(spacing: 12) {
                     Image(systemName: "calendar")
-                        .font(.system(size: 20, weight: .medium))
+                        .font(.system(size: dynamicIconSize, weight: .medium))
 
                     Text("Calendar View")
-                        .font(.system(size: 18, weight: .semibold, design: .rounded))
+                        .font(.system(.title3, design: .rounded))
+                        .fontWeight(.semibold)
+                        .lineLimit(dynamicTypeSize.scaleFactor >= 1.6 ? 2 : 1)
+                        .minimumScaleFactor(dynamicTypeSize.scaleFactor >= 1.6 ? 1.0 : 0.8)
+                        .multilineTextAlignment(.leading)
+                        .allowsTightening(true)
+                        .layoutPriority(1)
                 }
                 .foregroundColor(.white)
                 .frame(maxWidth: .infinity)
-                .padding(.horizontal, 20)
-                .padding(.vertical, 18)
+                .padding(.horizontal, 20 * dynamicTypeSize.scaleFactor)
+                .padding(.vertical, 18 * dynamicTypeSize.scaleFactor)
                 .background {
                     RoundedRectangle(cornerRadius: 16)
                         .fill(
@@ -409,14 +494,20 @@ struct ActionButtonsSection: View {
             } label: {
                 HStack(spacing: 12) {
                     Image(systemName: "plus.circle.fill")
-                        .font(.system(size: 20, weight: .medium))
+                        .font(.system(size: dynamicIconSize, weight: .medium))
                     
                     Text("Add Reminder")
-                        .font(.system(size: 18, weight: .semibold, design: .rounded))
+                        .font(.system(.title3, design: .rounded))
+                        .fontWeight(.semibold)
+                        .lineLimit(dynamicTypeSize.scaleFactor >= 1.6 ? 2 : 1)
+                        .minimumScaleFactor(dynamicTypeSize.scaleFactor >= 1.6 ? 1.0 : 0.8)
+                        .multilineTextAlignment(.leading)
+                        .allowsTightening(true)
+                        .layoutPriority(1)
                 }
                 .foregroundColor(.white)
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 16)
+                .padding(.vertical, 16 * dynamicTypeSize.scaleFactor)
                 .background {
                     RoundedRectangle(cornerRadius: 16)
                         .fill(
@@ -494,6 +585,7 @@ private struct InteractivePopGestureEnabler: UIViewRepresentable {
 
 struct BackHapticToolbar: ViewModifier {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     func body(content: Content) -> some View {
         content
@@ -505,8 +597,8 @@ struct BackHapticToolbar: ViewModifier {
                         dismiss()
                     } label: {
                         Image(systemName: "chevron.left")
-                            .font(.system(size: 17, weight: .semibold))
-                            .frame(width: 44, height: 44, alignment: .center)
+                            .font(.system(size: min(18, 18 * dynamicTypeSize.scaleFactor), weight: .semibold))
+                            .frame(width: 44, height: 44, alignment: .center) // Standard touch target
                             .contentShape(Circle())
                             .accessibilityLabel("Back")
                     }
@@ -517,10 +609,46 @@ struct BackHapticToolbar: ViewModifier {
     }
 }
 
+// MARK: - Dynamic Type Extension
+
+extension DynamicTypeSize {
+    /// Returns a scale factor based on the dynamic type size
+    /// Medium (default) returns 1.0, smaller sizes return values < 1.0, larger sizes return values > 1.0
+    var scaleFactor: CGFloat {
+        switch self {
+        case .xSmall:
+            return 0.9
+        case .small:
+            return 1.0
+        case .medium:
+            return 1.2 // New baseline: was 1.0
+        case .large:
+            return 1.3
+        case .xLarge:
+            return 1.4
+        case .xxLarge:
+            return 1.5
+        case .xxxLarge:
+            return 1.6
+        case .accessibility1:
+            return 1.8
+        case .accessibility2:
+            return 2.0
+        case .accessibility3:
+            return 2.2
+        case .accessibility4:
+            return 2.4
+        case .accessibility5:
+            return 2.6
+        @unknown default:
+            return 1.2
+        }
+    }
+}
+
 #Preview {
     ContentView()
         .environmentObject(NotificationManager.shared)
         .environmentObject(InAppNotificationManager())
         .modelContainer(for: Item.self, inMemory: true)
 }
-
