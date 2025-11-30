@@ -103,6 +103,9 @@ struct ContentView: View {
                     NavigationLink {
                         SettingsView().modifier(BackHapticToolbar())
                     } label: {
+                        let maxButtonSize: CGFloat = 36
+                        let iconSize = min(dynamicIconSize(for: 16), 28)
+                        let buttonSize = maxButtonSize
                         ZStack {
                             // Background circle that scales appropriately with Dynamic Type
                             Circle()
@@ -113,16 +116,15 @@ struct ContentView: View {
                                         endPoint: .bottomTrailing
                                     )
                                 )
-                                .frame(width: dynamicButtonSize(for: 28), height: dynamicButtonSize(for: 28))
+                                .frame(width: buttonSize, height: buttonSize)
                                 .shadow(color: .blue.opacity(0.3), radius: 4, x: 0, y: 2)
                             
                             // Icon that scales with Dynamic Type up to "large" size
                             Image(systemName: "gearshape.fill")
-                                .font(.system(size: dynamicIconSize(for: 16), weight: .semibold))
+                                .font(.system(size: iconSize, weight: .semibold))
                                 .foregroundColor(.white)
                                 .scaleEffect(settingsButtonScale)
                         }
-                        .padding(.vertical, 2)
                     }
                     .buttonStyle(.plain)
                     .simultaneousGesture(
@@ -152,13 +154,13 @@ struct ContentView: View {
     
     // Dynamic Type scaling helpers
     private func dynamicIconSize(for baseSize: CGFloat) -> CGFloat {
-        let scaleFactor = min(dynamicTypeSize.scaleFactor, 1.3) // Raised cap to reflect new baseline
+        let scaleFactor = min(dynamicTypeSize.scaleFactor, 1.4) // Cap increased to 1.4
         return baseSize * scaleFactor
     }
     
     private func dynamicButtonSize(for baseSize: CGFloat) -> CGFloat {
-        let scaleFactor = min(dynamicTypeSize.scaleFactor, 1.3) // Raised cap to reflect new baseline
-        return baseSize * scaleFactor
+        let maxButtonSize: CGFloat = 44
+        return maxButtonSize
     }
 
 }

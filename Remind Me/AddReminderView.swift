@@ -174,7 +174,7 @@ struct AddReminderView: View {
                             // Notification Options Section
                             ModernFormSection(title: "Notification Options") {
                                 VStack(spacing: 16 * dynamicTypeSize.scaleFactor) {
-                                    ModernPicker(
+                                    ModernCenteredPicker(
                                         title: "Follow-up interval",
                                         selection: $notificationIntervalMinutes,
                                         options: [1, 2, 5, 10, 15, 30]
@@ -236,7 +236,7 @@ struct AddReminderView: View {
                     iconSystemName: "plus.circle.fill",
                     gradientColors: [.green, .blue],
                     topPadding: 32,
-                    fontScale: 1.0
+                    fontScale: 0.8
                 )
             }
         }

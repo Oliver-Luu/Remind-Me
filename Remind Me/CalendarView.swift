@@ -40,11 +40,12 @@ struct CalendarView: View {
     }
     
     private var dynamicToolbarIconSize: CGFloat {
-        min(18, 18 * min(dynamicTypeSize.scaleFactor, 1.3))
+        let cappedScale = min(dynamicTypeSize.scaleFactor, 1.4)
+        return 18 * cappedScale
     }
     
     private var dynamicToolbarButtonSize: CGFloat {
-        max(36, 36 * min(dynamicTypeSize.scaleFactor, 1.2)) // Cap scaling for buttons
+        44
     }
 
     var body: some View {
@@ -133,14 +134,18 @@ struct CalendarView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
+                let maxButtonSize: CGFloat = 36
+                let iconSize = min(dynamicToolbarIconSize, 28)
+                let buttonSize = maxButtonSize
+                
                 Button {
                     Haptics.impact(.medium)
                     isPresentingAddReminder = true
                 } label: {
                     Image(systemName: "plus")
-                        .font(.system(size: dynamicToolbarIconSize, weight: .semibold))
+                        .font(.system(size: iconSize, weight: .semibold))
                         .foregroundColor(.white)
-                        .frame(width: dynamicToolbarButtonSize, height: dynamicToolbarButtonSize)
+                        .frame(width: buttonSize, height: buttonSize)
                         .background {
                             Circle()
                                 .fill(
@@ -152,10 +157,8 @@ struct CalendarView: View {
                                 )
                                 .shadow(color: .teal.opacity(0.3), radius: 8, x: 0, y: 4)
                         }
-                        .clipShape(Circle())
                 }
                 .buttonStyle(.plain)
-                .buttonBorderShape(.circle)
             }
 
             ToolbarItem(placement: .principal) {

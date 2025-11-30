@@ -103,11 +103,12 @@ struct RemindersListView: View {
     }
     
     private var dynamicToolbarIconSize: CGFloat {
-        18 * min(dynamicTypeSize.scaleFactor, 1.2)
+        let cappedScale = min(dynamicTypeSize.scaleFactor, 1.4)
+        return 18 * cappedScale
     }
     
     private var dynamicToolbarButtonSize: CGFloat {
-        max(36, 36 * min(dynamicTypeSize.scaleFactor, 1.2))
+        44
     }
 
     var body: some View {
@@ -204,14 +205,18 @@ struct RemindersListView: View {
             }
             
             ToolbarItem(placement: .primaryAction) {
+                let maxButtonSize: CGFloat = 36
+                let iconSize = min(dynamicToolbarIconSize, 28)
+                let buttonSize = maxButtonSize
+                
                 Button {
                     Haptics.impact(.medium)
                     isPresentingAddReminder = true
                 } label: {
                     Image(systemName: "plus")
-                        .font(.system(size: dynamicToolbarIconSize, weight: .semibold))
+                        .font(.system(size: iconSize, weight: .semibold))
                         .foregroundColor(.white)
-                        .frame(width: dynamicToolbarButtonSize, height: dynamicToolbarButtonSize)
+                        .frame(width: buttonSize, height: buttonSize)
                         .background {
                             Circle()
                                 .fill(
@@ -223,10 +228,8 @@ struct RemindersListView: View {
                                 )
                                 .shadow(color: .orange.opacity(0.3), radius: 8, x: 0, y: 4)
                         }
-                        .clipShape(Circle())
                 }
                 .buttonStyle(.plain)
-                .buttonBorderShape(.circle)
             }
         }
         .sheet(isPresented: $isPresentingAddReminder) {
