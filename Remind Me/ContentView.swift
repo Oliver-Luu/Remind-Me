@@ -365,14 +365,6 @@ struct ActionButtonsSection: View {
         return 20 * cappedScale
     }
     
-    /*
-    private var dynamicTextSize: CGFloat {
-        // Cap scaling to avoid oversized text that could cause clipping
-        let cappedScale = min(dynamicTypeSize.scaleFactor, 1.2)
-        return 18 * cappedScale
-    }
-    */
-    
     var body: some View {
         VStack(spacing: 20) {
             // My Reminders Button with glass effect
@@ -623,7 +615,7 @@ extension DynamicTypeSize {
         case .small:
             return 1.0
         case .medium:
-            return 1.2 // New baseline: was 1.0
+            return 1.15 // New baseline: was 1.0
         case .large:
             return 1.3
         case .xLarge:
@@ -643,7 +635,7 @@ extension DynamicTypeSize {
         case .accessibility5:
             return 2.6
         @unknown default:
-            return 1.2
+            return 1.15
         }
     }
 }
