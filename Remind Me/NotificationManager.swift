@@ -66,6 +66,12 @@ class NotificationManager: ObservableObject {
     
     /// Schedule a notification for a reminder with persistent follow-ups
     func scheduleNotification(for item: Item) async {
+        // Do not schedule if the item is in the delete bin
+        if item.isInDeleteBin {
+            print("Skipping scheduling notification for item in delete bin: \(item.title)")
+            return
+        }
+        
         // Proceed if not denied; allow authorized, provisional, and ephemeral statuses
         guard authorizationStatus != .denied else {
             print("Notifications denied by user")
@@ -93,6 +99,12 @@ class NotificationManager: ObservableObject {
     }
     
     private func scheduleInitialNotification(for item: Item) async {
+        // Do not schedule if the item is in the delete bin
+        if item.isInDeleteBin {
+            print("Skipping scheduling initial notification for item in delete bin: \(item.title)")
+            return
+        }
+
         currentBadgeCount += 1
         let content = createNotificationContent(for: item, isPersistent: false, followUpNumber: 0, badge: currentBadgeCount)
         
@@ -127,6 +139,12 @@ class NotificationManager: ObservableObject {
     }
     
     private func schedulePersistentNotifications(for item: Item) async {
+        // Do not schedule if the item is in the delete bin
+        if item.isInDeleteBin {
+            print("Skipping scheduling persistent notifications for item in delete bin: \(item.title)")
+            return
+        }
+
         guard !item.isCompleted else {
             print("Skipping persistent notifications for completed reminder: \(item.title)")
             return
@@ -158,6 +176,17 @@ class NotificationManager: ObservableObject {
         }
 
         print("Scheduled \(item.notificationRepeatCount) persistent notifications for: \(item.title)")
+    }
+    
+    /// Schedule notifications for multiple reminders
+    func scheduleNotifications(for items: [Item]) async {
+        for item in items {
+            if item.isInDeleteBin {
+                print("Skipping scheduling notification for item in delete bin: \(item.title)")
+                continue
+            }
+            await scheduleNotification(for: item)
+        }
     }
     
     private func createNotificationContent(for item: Item, isPersistent: Bool, followUpNumber: Int = 0, badge: Int? = nil) -> UNMutableNotificationContent {
@@ -257,13 +286,6 @@ class NotificationManager: ObservableObject {
         activePeristentReminders.remove(reminderID)
         print("Cancelled all notifications (pending and delivered) for reminder: \(reminderID)")
         resetBadge()
-    }
-    
-    /// Schedule notifications for multiple reminders
-    func scheduleNotifications(for items: [Item]) async {
-        for item in items {
-            await scheduleNotification(for: item)
-        }
     }
     
     /// Schedule a one-off test notification for Settings
@@ -427,8 +449,14 @@ class NotificationManager: ObservableObject {
     }
     
     /// Call this method when a reminder is deleted from the UI
-    func handleReminderDeleted(_ item: Item) async {
+    func handleReminderDeleted(_ item: Item, modelContext: ModelContext) async {
         await cancelAllNotificationsForReminder(reminderID: item.id)
+        item.isInDeleteBin = true
+        do {
+            try modelContext.save()
+        } catch {
+            print("Error saving context after marking item as in delete bin: \(error)")
+        }
         resetBadge()
     }
 }

@@ -40,25 +40,7 @@ struct EditReminderView: View {
         GeometryReader { geometry in
             ZStack {
                 // Dynamic animated background
-                RadialGradient(
-                    gradient: Gradient(colors: [
-                        Color.purple.opacity(0.2),
-                        Color.blue.opacity(0.15),
-                        Color.clear
-                    ]),
-                    center: animateGradient ? .topTrailing : .bottomLeading,
-                    startRadius: 30,
-                    endRadius: 300
-                )
-                .ignoresSafeArea()
-                .onAppear {
-                    withAnimation(
-                        .easeInOut(duration: 9)
-                        .repeatForever(autoreverses: true)
-                    ) {
-                        animateGradient.toggle()
-                    }
-                }
+                AnimatedBackground(animate: $animateGradient)
                 
                 ScrollView {
                     VStack(spacing: 24) {
@@ -96,7 +78,7 @@ struct EditReminderView: View {
                                     isOn: $isCompleted,
                                     icon: isCompleted ? "checkmark.circle.fill" : "circle"
                                 )
-                                .onChange(of: isCompleted) { _, _ in
+                                .onChange(of: isCompleted) {
                                     Haptics.selectionChanged()
                                 }
                             }
@@ -112,7 +94,7 @@ struct EditReminderView: View {
                                         ) { frequency in
                                             Text(frequency.displayName).tag(frequency)
                                         }
-                                        .onChange(of: repeatFrequency) { _, _ in
+                                        .onChange(of: repeatFrequency) {
                                             Haptics.selectionChanged()
                                         }
                                         
@@ -186,7 +168,7 @@ struct EditReminderView: View {
                                     ) { minutes in
                                         Text("\(minutes) min").tag(minutes)
                                     }
-                                    .onChange(of: notificationIntervalMinutes) { _, _ in
+                                    .onChange(of: notificationIntervalMinutes) {
                                         Haptics.selectionChanged()
                                     }
                                     
@@ -196,7 +178,7 @@ struct EditReminderView: View {
                                         range: 0...30,
                                         suffix: "follow-up\(notificationRepeatCount == 1 ? "" : "s")"
                                     )
-                                    .onChange(of: notificationRepeatCount) { _, _ in
+                                    .onChange(of: notificationRepeatCount) {
                                         Haptics.selectionChanged()
                                     }
                                     
@@ -253,7 +235,7 @@ struct EditReminderView: View {
                 Button(role: .destructive) {
                     Haptics.warning()
                     Task {
-                        await NotificationManager.shared.handleReminderDeleted(item)
+                        await NotificationManager.shared.handleReminderDeleted(item, modelContext: modelContext)
                     }
                     modelContext.delete(item)
                     try? modelContext.save()
@@ -552,7 +534,31 @@ struct ModernToggleRow: View {
     }
 }
 
+struct AnimatedBackground: View {
+    @Binding var animate: Bool
 
+    var body: some View {
+        RadialGradient(
+            gradient: Gradient(colors: [
+                Color.purple.opacity(0.2),
+                Color.blue.opacity(0.15),
+                Color.clear
+            ]),
+            center: animate ? .topTrailing : .bottomLeading,
+            startRadius: 30,
+            endRadius: 300
+        )
+        .ignoresSafeArea()
+        .onAppear {
+            withAnimation(
+                .easeInOut(duration: 9)
+                    .repeatForever(autoreverses: true)
+            ) {
+                animate.toggle()
+            }
+        }
+    }
+}
 
 
 #Preview {

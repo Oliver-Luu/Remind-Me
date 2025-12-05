@@ -13,8 +13,8 @@ struct CalendarView: View {
 
     private var filteredItems: [Item] {
         let trimmed = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return items }
-        return items.filter { $0.title.localizedCaseInsensitiveContains(trimmed) }
+        guard !trimmed.isEmpty else { return items.filter { !$0.isInDeleteBin } }
+        return items.filter { !$0.isInDeleteBin && $0.title.localizedCaseInsensitiveContains(trimmed) }
     }
 
     private var groupedByDay: [(day: Date, items: [Item])] {
@@ -101,10 +101,10 @@ struct CalendarView: View {
                                 .padding(.top, 24)
 
                                 LazyVStack(spacing: dynamicSectionSpacing, pinnedViews: [.sectionHeaders]) {
-                                    ForEach(groupedByDay, id: \ .day) { section in
+                                    ForEach(groupedByDay, id: \.day) { section in
                                         Section(header: CalendarSectionHeader(day: section.day)) {
                                             ForEach(section.items) { item in
-                                                CalendarItemRow(item: item, selectedItem: $selectedItem, modelContext: modelContext)
+                                                CalendarItemRow(item: item, selectedItem: $selectedItem)
                                             }
                                         }
                                         .id(section.day)
@@ -251,7 +251,7 @@ private struct CalendarSectionHeader: View {
 private struct CalendarItemRow: View {
     let item: Item
     @Binding var selectedItem: Item?
-    let modelContext: ModelContext
+    @Environment(\.modelContext) private var modelContext
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var isRemoving = false
     @State private var offsetX: CGFloat = 0
@@ -291,8 +291,8 @@ private struct CalendarItemRow: View {
                     Haptics.warning()
                     withAnimation(.easeInOut(duration: 0.2)) { isRemoving = true }
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.22) {
-                        Task { await NotificationManager.shared.handleReminderDeleted(item) }
-                        modelContext.delete(item)
+                        Task { await NotificationManager.shared.handleReminderDeleted(item, modelContext: modelContext) }
+                        item.isInDeleteBin = true
                         try? modelContext.save()
                     }
                 } label: {
@@ -350,8 +350,8 @@ private struct CalendarItemRow: View {
                         Haptics.warning()
                         withAnimation(.easeInOut(duration: 0.2)) { isRemoving = true }
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.22) {
-                            Task { await NotificationManager.shared.handleReminderDeleted(item) }
-                            modelContext.delete(item)
+                            Task { await NotificationManager.shared.handleReminderDeleted(item, modelContext: modelContext) }
+                            item.isInDeleteBin = true
                             try? modelContext.save()
                         }
                     } label: {

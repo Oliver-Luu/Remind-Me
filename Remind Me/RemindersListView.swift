@@ -23,10 +23,15 @@ struct RemindersListView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    @Query(sort: [SortDescriptor(\Item.timestamp, order: .forward)]) private var items: [Item]
+    @Query(sort: [SortDescriptor(\Item.timestamp, order: .forward)]) private var allItems: [Item]
     @State private var isPresentingAddReminder = false
     @State private var selectedItem: Item?
     @State private var editingSeries: SeriesID?
+    
+    // Filter out items in delete bin
+    private var items: [Item] {
+        allItems.filter { !$0.isInDeleteBin }
+    }
 
     private var repeatingSeries: [ReminderSeries] {
         let repeatingItems = items.filter { $0.parentReminderID != nil }
@@ -297,13 +302,13 @@ struct RemindersListView: View {
     
     private func deleteAllCompletedSingleReminders() {
         withAnimation {
-            // Delete only completed single reminders
+            // Mark only completed single reminders as in delete bin
             let completedSingles = singleItems.filter { $0.isCompleted }
             Task {
                 await NotificationManager.shared.cancelNotifications(for: completedSingles)
             }
             for item in completedSingles {
-                modelContext.delete(item)
+                item.isInDeleteBin = true
             }
             
             // Save changes
@@ -313,13 +318,13 @@ struct RemindersListView: View {
     
     private func deleteAllCompletedSeries() {
         withAnimation {
-            // Delete only completed occurrences from repeating reminders
+            // Mark only completed occurrences from repeating reminders as in delete bin
             let completedRepeatingItems = items.filter { $0.parentReminderID != nil && $0.isCompleted }
             Task {
                 await NotificationManager.shared.cancelNotifications(for: completedRepeatingItems)
             }
             for item in completedRepeatingItems {
-                modelContext.delete(item)
+                item.isInDeleteBin = true
             }
             // Save changes
             try? modelContext.save()
@@ -539,7 +544,9 @@ struct ReminderSeriesCard: View {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.22) {
                         Task {
                             await NotificationManager.shared.cancelNotifications(for: series.items)
-                            for it in series.items { modelContext.delete(it) }
+                            for it in series.items {
+                                it.isInDeleteBin = true
+                            }
                             try? modelContext.save()
                         }
                     }
@@ -706,7 +713,9 @@ struct ReminderSeriesCard: View {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.22) {
                     Task {
                         await NotificationManager.shared.cancelNotifications(for: series.items)
-                        for it in series.items { modelContext.delete(it) }
+                        for it in series.items {
+                            it.isInDeleteBin = true
+                        }
                         try? modelContext.save()
                     }
                 }
@@ -802,9 +811,11 @@ struct ReminderItemCard: View {
                     Haptics.warning()
                     withAnimation(.easeInOut(duration: 0.2)) { isRemoving = true }
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.22) {
-                        Task { await NotificationManager.shared.handleReminderDeleted(item) }
-                        modelContext.delete(item)
-                        try? modelContext.save()
+                        Task {
+                            await NotificationManager.shared.handleReminderDeleted(item, modelContext: modelContext)
+                            item.isInDeleteBin = true
+                            try? modelContext.save()
+                        }
                     }
                 } label: {
                     Label("Delete", systemImage: "trash")
@@ -868,9 +879,11 @@ struct ReminderItemCard: View {
                         Haptics.warning()
                         withAnimation(.easeInOut(duration: 0.2)) { isRemoving = true }
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.22) {
-                            Task { await NotificationManager.shared.handleReminderDeleted(item) }
-                            modelContext.delete(item)
-                            try? modelContext.save()
+                            Task {
+                                await NotificationManager.shared.handleReminderDeleted(item, modelContext: modelContext)
+                                item.isInDeleteBin = true
+                                try? modelContext.save()
+                            }
                         }
                     } label: {
                         Image(systemName: "trash")
@@ -939,9 +952,11 @@ struct ReminderItemCard: View {
                 Haptics.warning()
                 withAnimation(.easeInOut(duration: 0.2)) { isRemoving = true }
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.22) {
-                    Task { await NotificationManager.shared.handleReminderDeleted(item) }
-                    modelContext.delete(item)
-                    try? modelContext.save()
+                    Task {
+                        await NotificationManager.shared.handleReminderDeleted(item, modelContext: modelContext)
+                        item.isInDeleteBin = true
+                        try? modelContext.save()
+                    }
                 }
             }
         }

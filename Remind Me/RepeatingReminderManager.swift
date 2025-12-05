@@ -9,6 +9,7 @@ import Foundation
 import SwiftData
 
 /// Creates repeating reminders based on the specified frequency and parameters
+@MainActor
 @discardableResult
 func addRepeatingReminders(
     title: String,
@@ -44,7 +45,7 @@ func addRepeatingReminders(
     
     // If it's not repeating, we're done
     if repeatFrequency == .none {
-        Task {
+        Task { @MainActor in
             await NotificationManager.shared.scheduleNotifications(for: remindersToSchedule)
         }
         return initialReminder
@@ -74,7 +75,7 @@ func addRepeatingReminders(
     try? modelContext.save()
     
     // Schedule notifications for all reminders
-    Task {
+    Task { @MainActor in
         await NotificationManager.shared.scheduleNotifications(for: remindersToSchedule)
     }
     
@@ -130,7 +131,7 @@ func addNextOccurrence(for item: Item, modelContext: ModelContext) {
     modelContext.insert(nextReminder)
     
     // Schedule notification for the new reminder
-    Task {
+    Task { @MainActor in
         await NotificationManager.shared.scheduleNotification(for: nextReminder)
     }
 }

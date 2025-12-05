@@ -317,7 +317,7 @@ struct ReminderDetailCard: View {
             HStack(spacing: 0) {
                 Spacer()
                 Button(role: .destructive) {
-                    Task { await NotificationManager.shared.handleReminderDeleted(item) }
+                    Task { await NotificationManager.shared.handleReminderDeleted(item, modelContext: modelContext) }
                     modelContext.delete(item)
                     try? modelContext.save()
                     onUpdate()
@@ -405,7 +405,7 @@ struct ReminderDetailCard: View {
                 // Options menu
                 if item.isCompleted {
                     Button(role: .destructive) {
-                        Task { await NotificationManager.shared.handleReminderDeleted(item) }
+                        Task { await NotificationManager.shared.handleReminderDeleted(item, modelContext: modelContext) }
                         modelContext.delete(item)
                         try? modelContext.save()
                         onUpdate()

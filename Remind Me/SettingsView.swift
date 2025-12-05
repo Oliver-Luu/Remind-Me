@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftData
 
 struct SettingsView: View {
     @AppStorage("settings.inAppSound") private var inAppSound: String = "default"
@@ -7,6 +8,15 @@ struct SettingsView: View {
     @AppStorage("settings.appearance") private var appearance: String = "system"
     @EnvironmentObject private var notificationManager: NotificationManager
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.modelContext) private var modelContext
+    
+    private static let deletedItemsSort: [SortDescriptor<Item>] = [
+        SortDescriptor(\Item.timestamp, order: .reverse)
+    ]
+    private static let deletedItemsFilter: Predicate<Item> = #Predicate<Item> { item in
+        item.isInDeleteBin
+    }
+    @Query(filter: Self.deletedItemsFilter, sort: Self.deletedItemsSort) private var deletedItems: [Item]
     
     // Dynamic Type scaling properties
     private var dynamicSectionSpacing: CGFloat {
@@ -383,6 +393,49 @@ struct SettingsView: View {
                                         }
                                     }
                                     .menuStyle(.automatic)
+                                }
+                            }
+                            
+                            ModernFormSection(title: "Recently Deleted") {
+                                if deletedItems.isEmpty {
+                                    Text("No reminders in bin")
+                                        .foregroundColor(.secondary)
+                                        .font(.system(size: dynamicMenuValueSize))
+                                        .frame(maxWidth: .infinity, alignment: .center)
+                                        .padding(.vertical, dynamicMenuPadding)
+                                } else {
+                                    ForEach(deletedItems, id: \.id) { item in
+                                        HStack {
+                                            VStack(alignment: .leading, spacing: 2) {
+                                                Text(item.title)
+                                                    .font(.system(size: dynamicMenuValueSize, weight: .medium))
+                                                    .foregroundColor(.primary)
+                                                    .lineLimit(1)
+                                                Text(item.timestamp, style: .date)
+                                                    .font(.system(size: dynamicMenuTitleSize))
+                                                    .foregroundColor(.secondary)
+                                            }
+                                            Spacer()
+                                            Button(role: .destructive) {
+                                                modelContext.delete(item)
+                                                do {
+                                                    try modelContext.save()
+                                                } catch {
+                                                    // Handle save error if necessary
+                                                }
+                                            } label: {
+                                                Text("Delete")
+                                                    .font(.system(size: dynamicMenuTitleSize, weight: .semibold))
+                                            }
+                                            .buttonStyle(BorderlessButtonStyle())
+                                        }
+                                        .padding(.vertical, 6)
+                                        .padding(.horizontal, dynamicMenuPadding)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 12)
+                                                .fill(.regularMaterial)
+                                        )
+                                    }
                                 }
                             }
                         }

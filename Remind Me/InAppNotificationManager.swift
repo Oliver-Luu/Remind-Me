@@ -41,8 +41,8 @@ class InAppNotificationManager: ObservableObject {
     
     /// Schedule an exact in-app trigger for this reminder's due time
     func scheduleInAppTrigger(for item: Item) {
-        // Don't schedule for completed items
-        guard !item.isCompleted else { return }
+        // Don't schedule for completed items or items in delete bin
+        guard !item.isCompleted, !item.isInDeleteBin else { return }
         // Cancel any existing timer for this item
         cancelInAppTrigger(for: item)
         let fireDate = item.timestamp
@@ -77,7 +77,7 @@ class InAppNotificationManager: ObservableObject {
         if let id = itemID {
             scheduledTimers.removeValue(forKey: id)
         }
-        guard let id = itemID, let item = fetchItem(withID: id), !item.isCompleted else {
+        guard let id = itemID, let item = fetchItem(withID: id), !item.isCompleted, !item.isInDeleteBin else {
             return
         }
         addNotificationSafely(item)
@@ -103,7 +103,7 @@ class InAppNotificationManager: ObservableObject {
         do {
             let descriptor = FetchDescriptor<Item>(
                 predicate: #Predicate<Item> { item in
-                    !item.isCompleted && item.timestamp >= tenMinutesAgo && item.timestamp <= now
+                    !item.isCompleted && !item.isInDeleteBin && item.timestamp >= tenMinutesAgo && item.timestamp <= now
                 },
                 sortBy: [SortDescriptor(\.timestamp, order: .forward)]
             )
@@ -133,8 +133,9 @@ class InAppNotificationManager: ObservableObject {
                 await NotificationManager.shared.handleReminderCompleted(item)
             }
             
-            // Maintain a rolling window of future items if this is a repeating series
-            if item.repeatFrequency != .none {
+            // Maintain a rolling window of future items if this is a repeating series,
+            // but only if item is not in delete bin
+            if item.repeatFrequency != .none && !item.isInDeleteBin {
                 if let parentID = item.parentReminderID {
                     // Add after the last item in the series to avoid duplicating an already-created “next”
                     do {
@@ -193,8 +194,11 @@ class InAppNotificationManager: ObservableObject {
             removeFromActiveNotifications(item)
             cancelInAppTrigger(for: item)
             
-            // Schedule in-app and system notifications for the snoozed reminder
-            scheduleInAppTrigger(for: snoozeReminder)
+            // Schedule in-app and system notifications for the snoozed reminder,
+            // but only if it's not in delete bin
+            if !snoozeReminder.isInDeleteBin {
+                scheduleInAppTrigger(for: snoozeReminder)
+            }
             Task {
                 await NotificationManager.shared.scheduleNotification(for: snoozeReminder)
             }
@@ -261,6 +265,7 @@ class InAppNotificationManager: ObservableObject {
     
     /// Safely add a notification, checking both active notifications and last shown timestamps
     func addNotificationSafely(_ item: Item) {
+        guard !item.isInDeleteBin else { return }
         print("DEBUG: Attempting to add notification for '\(item.title)' (ID: \(item.id))")
         let isActive = activeNotifications.contains(where: { $0.id == item.id })
         let last = lastShownAt[item.id]
@@ -281,7 +286,7 @@ class InAppNotificationManager: ObservableObject {
         do {
             let now = Date()
             let descriptor = FetchDescriptor<Item>(
-                predicate: #Predicate<Item> { it in !it.isCompleted && it.timestamp > now }
+                predicate: #Predicate<Item> { it in !it.isCompleted && !it.isInDeleteBin && it.timestamp > now }
             )
             let items = try modelContext.fetch(descriptor)
             for it in items {

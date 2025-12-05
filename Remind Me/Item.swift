@@ -53,6 +53,7 @@ final class Item {
     var isCompleted: Bool
     var parentReminderID: String? // For tracking related repeating reminders
     var id: String // Unique identifier for notifications
+    var isInDeleteBin: Bool
     
     init(
         timestamp: Date,
@@ -61,7 +62,8 @@ final class Item {
         parentReminderID: String? = nil,
         notificationIntervalMinutes: Int = 1,
         notificationRepeatCount: Int = 10,
-        repeatInterval: Int = 1
+        repeatInterval: Int = 1,
+        isInDeleteBin: Bool = false
     ) {
         self.timestamp = timestamp
         self.title = title
@@ -72,5 +74,7 @@ final class Item {
         self.isCompleted = false
         self.parentReminderID = parentReminderID
         self.id = UUID().uuidString
+        self.isInDeleteBin = isInDeleteBin
     }
 }
+
