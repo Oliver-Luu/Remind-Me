@@ -204,7 +204,7 @@ struct EditReminderSeriesView: View {
                     iconSystemName: "repeat.circle.fill",
                     gradientColors: [.indigo, .purple],
                     topPadding: 32,
-                    fontScale: 1.0
+                    fontScale: 0.8
                 )
             }
             ToolbarItem(placement: .bottomBar) {
