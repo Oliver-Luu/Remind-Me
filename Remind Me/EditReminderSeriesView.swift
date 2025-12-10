@@ -78,7 +78,7 @@ struct EditReminderSeriesView: View {
                         // Series Details Section
                         ModernFormSection(title: "Series Details") {
                             VStack(spacing: 16 * dynamicTypeSize.scaleFactor) {
-                                ModernTextField(title: "Title", text: $title)
+                                ModernTextField(title: "Reminder Title", text: $title, centered: true)
                                 
                                 if repeatFrequency == .custom {
                                     ModernDatePicker(
@@ -96,7 +96,8 @@ struct EditReminderSeriesView: View {
                                     ModernDatePicker(
                                         title: "Series start date",
                                         selection: $startDate,
-                                        displayedComponents: [.date, .hourAndMinute]
+                                        displayedComponents: [.date, .hourAndMinute],
+                                        centered: true
                                     )
                                 }
                             }
@@ -130,7 +131,7 @@ struct EditReminderSeriesView: View {
                                         title: "Interval",
                                         value: $repeatInterval,
                                         range: 1...52,
-                                        suffix: repeatFrequency.unitName(for: repeatInterval)
+                                        suffix: repeatFrequency.unitName(for: repeatInterval),
                                     )
                                     
                                     ModernStepper(

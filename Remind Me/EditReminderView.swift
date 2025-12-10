@@ -72,11 +72,11 @@ struct EditReminderView: View {
                             }
                             
                             // Status Section
-                            ModernFormSection(title: "Status") {
+                            ModernFormSection(title: "Completion Status") {
                                 ModernToggleRow(
                                     title: "Mark as Completed",
                                     isOn: $isCompleted,
-                                    icon: isCompleted ? "checkmark.circle.fill" : "circle"
+                                    icon: isCompleted ? "checkmark.circle.fill" : "circle",
                                 )
                                 .onChange(of: isCompleted) {
                                     Haptics.selectionChanged()
