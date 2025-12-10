@@ -148,6 +148,33 @@ struct ContentView: View {
                     .accessibilityLabel("Settings")
                     .accessibilityHint("Opens app settings")
                 }
+                ToolbarItem(placement: .topBarLeading) {
+                    NavigationLink {
+                        TrashView().modifier(BackHapticToolbar())
+                    } label: {
+                        let maxButtonSize: CGFloat = 36
+                        let iconSize = min(dynamicIconSize(for: 16), 28)
+                        let buttonSize = maxButtonSize
+                        ZStack {
+                            Circle()
+                                .fill(
+                                    LinearGradient(
+                                        colors: [.gray, .purple],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+                                .frame(width: buttonSize, height: buttonSize)
+                                .shadow(color: .black.opacity(0.15), radius: 4, x: 0, y: 2)
+                            Image(systemName: "trash")
+                                .font(.system(size: iconSize, weight: .semibold))
+                                .foregroundColor(.white)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Recently Deleted")
+                    .accessibilityHint("Opens the trash to restore reminders")
+                }
             }
         }
     }
@@ -646,3 +673,4 @@ extension DynamicTypeSize {
         .environmentObject(InAppNotificationManager())
         .modelContainer(for: Item.self, inMemory: true)
 }
+

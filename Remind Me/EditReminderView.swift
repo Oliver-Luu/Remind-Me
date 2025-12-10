@@ -215,20 +215,19 @@ struct EditReminderView: View {
                     title: "Edit Reminder",
                     iconSystemName: "pencil.circle.fill",
                     gradientColors: [.purple, .blue],
-                    topPadding: 32
+                    topPadding: 32,
+                    fontScale: 0.8
                 )
             }
             
-            if hasChanges {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
-                        Haptics.impact(.medium)
-                        saveChanges()
-                    }
-                    .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                    .fontWeight(.semibold)
-                    .foregroundColor(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? .secondary : .purple)
+            ToolbarItem(placement: .confirmationAction) {
+                Button("Save") {
+                    Haptics.impact(.medium)
+                    saveChanges()
                 }
+                .disabled(!hasChanges || title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                .fontWeight(.semibold)
+                .foregroundColor((!hasChanges || title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) ? .secondary : .purple)
             }
             
             ToolbarItem(placement: .bottomBar) {
