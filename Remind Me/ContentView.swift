@@ -25,13 +25,13 @@ struct ContentView: View {
                     // Dynamic animated background
                     CrossingRadialBackground(
                         colorsA: [
-                            Color.blue.opacity(0.3),
+                            Color.red.opacity(0.3),
                             Color.purple.opacity(0.2),
                             Color.clear
                         ],
                         colorsB: [
                             Color.purple.opacity(0.4),
-                            Color.blue.opacity(0.28),
+                            Color.red.opacity(0.28),
                             Color.clear
                         ],
                         startCenterA: .bottomTrailing,
@@ -111,13 +111,13 @@ struct ContentView: View {
                             Circle()
                                 .fill(
                                     LinearGradient(
-                                        colors: [.blue, .purple],
+                                        colors: [.red, .purple],
                                         startPoint: .topLeading,
                                         endPoint: .bottomTrailing
                                     )
                                 )
                                 .frame(width: buttonSize, height: buttonSize)
-                                .shadow(color: .blue.opacity(0.3), radius: 4, x: 0, y: 2)
+                                .shadow(color: .red.opacity(0.3), radius: 4, x: 0, y: 2)
                             
                             // Icon that scales with Dynamic Type up to "large" size
                             Image(systemName: "gearshape.fill")
@@ -228,7 +228,7 @@ struct HeaderSection: View {
                 .font(.system(size: dynamicIconSize, weight: .light))
                 .foregroundStyle(
                     LinearGradient(
-                        colors: [.blue, .purple],
+                        colors: [.red, .purple],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     )
@@ -254,7 +254,7 @@ struct HeaderSection: View {
                 .font(.system(size: dynamicTitleSize, weight: .bold, design: .default))
                 .foregroundStyle(
                     LinearGradient(
-                        colors: [.blue, .purple],
+                        colors: [.red, .purple],
                         startPoint: .leading,
                         endPoint: .trailing
                     )
@@ -424,7 +424,7 @@ struct ActionButtonsSection: View {
                                 endPoint: .trailing
                             )
                         )
-                        .shadow(color: .blue.opacity(0.3), radius: 12, x: 0, y: 6)
+                        .shadow(color: .red.opacity(0.3), radius: 12, x: 0, y: 6)
                 }
             }
             .simultaneousGesture(
